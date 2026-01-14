@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIS2BIM OpenAnalysis - Locatie Rapport Generator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <img src="logo.png" alt="GIS2BIM Logo" class="logo-image">
+                <span class="logo-text">
+                    <strong>OpenAnalysis</strong>
+                    <span class="logo-subtitle">Powered by OpenAEC Foundation</span>
+                </span>
+            </div>
+            <nav class="nav">
+                <a href="#" class="nav-link active">Rapport Generator</a>
+                <a href="#" class="nav-link">Documentatie</a>
+                <a href="#" class="nav-link">Over</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-icon" onclick="openSettingsModal()" title="Instellingen">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 13a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M17.4 10c0-.6-.4-1.1-.9-1.3l-1-.4c-.2-.5-.4-1-.7-1.4l.3-1c.2-.5 0-1.1-.4-1.5l-.7-.7c-.4-.4-1-.5-1.5-.3l-1 .3c-.5-.3-.9-.5-1.4-.7l-.4-1c-.2-.6-.7-1-1.3-1h-1c-.6 0-1.1.4-1.3.9l-.4 1c-.5.2-1 .4-1.4.7l-1-.3c-.5-.2-1.1 0-1.5.4l-.7.7c-.4.4-.5 1-.3 1.5l.3 1c-.3.5-.5.9-.7 1.4l-1 .4c-.5.2-.9.7-.9 1.3v1c0 .6.4 1.1.9 1.3l1 .4c.2.5.4 1 .7 1.4l-.3 1c-.2.5 0 1.1.4 1.5l.7.7c.4.4 1 .5 1.5.3l1-.3c.5.3.9.5 1.4.7l.4 1c.2.5.7.9 1.3.9h1c.6 0 1.1-.4 1.3-.9l.4-1c.5-.2 1-.4 1.4-.7l1 .3c.5.2 1.1 0 1.5-.4l.7-.7c.4-.4.5-1 .3-1.5l-.3-1c.3-.5.5-.9.7-1.4l1-.4c.5-.2.9-.7.9-1.3v-1z" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Left Panel -->
+        <aside class="left-panel" id="left-panel">
+            <!-- Search Section -->
+            <div class="panel-section">
+                <h2 class="section-title">Locatie</h2>
+                <div class="search-container">
+                    <input type="text" id="address-input" class="search-input" placeholder="Zoek adres...">
+                    <button class="search-button" onclick="searchAddress()">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                            <path d="M9 17A8 8 0 109 1a8 8 0 000 16zM19 19l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="location-info">
+                    <div class="info-row">
+                        <span class="info-label">Adres</span>
+                        <span class="info-value" id="selected-address">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Gemeente</span>
+                        <span class="info-value" id="selected-municipality">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Coördinaten</span>
+                        <span class="info-value" id="selected-coords">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div class="panel-section">
+                <h2 class="section-title">Instellingen</h2>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>Formaat</label>
+                        <div class="button-toggle">
+                            <button class="toggle-btn active" data-value="A3" onclick="setPaperSize('A3')">A3</button>
+                            <button class="toggle-btn" data-value="A4" onclick="setPaperSize('A4')">A4</button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label>Oriëntatie</label>
+                        <div class="button-toggle">
+                            <button class="toggle-btn active" data-value="landscape" onclick="setOrientation('landscape')">Liggend</button>
+                            <button class="toggle-btn" data-value="portrait" onclick="setOrientation('portrait')">Staand</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="setting-item full-width">
+                    <label>Bounding box breedte: <strong id="radius-value">500</strong>m</label>
+                    <input type="range" id="radius-input" class="range-input" value="500" min="100" max="2000" step="100">
+                </div>
+            </div>
+
+            <!-- Layers Section -->
+            <div class="panel-section layers-section">
+                <div class="section-header">
+                    <h2 class="section-title">Kaartlagen</h2>
+                    <div class="section-actions">
+                        <button class="btn-small" onclick="openLayerModal()">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                                <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            Toevoegen
+                        </button>
+                    </div>
+                </div>
+                <div class="layers-list" id="layers-list">
+                    <!-- Layers will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Saved Reports -->
+            <div class="panel-section">
+                <div class="section-header">
+                    <h2 class="section-title">Opgeslagen Rapporten</h2>
+                    <button class="btn-small" onclick="saveCurrentReport()">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M13 11v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2M8 3v8M5 6l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        Opslaan
+                    </button>
+                </div>
+                <div class="saved-reports" id="saved-reports">
+                    <div class="empty-state small">Geen opgeslagen rapporten</div>
+                </div>
+            </div>
+
+            <!-- Server Settings (collapsible, hidden by default) -->
+            <div class="panel-section servers-section collapsed" id="servers-section">
+                <div class="section-header clickable" onclick="toggleServersSection()">
+                    <h2 class="section-title">
+                        <svg class="collapse-icon" width="10" height="10" viewBox="0 0 16 16" fill="none">
+                            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        WMS Servers
+                    </h2>
+                    <div class="section-actions">
+                        <button class="btn-small btn-icon-only" onclick="event.stopPropagation(); openServerModal()" title="Server toevoegen">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                                <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        <button class="btn-small btn-icon-only" onclick="event.stopPropagation(); checkAllServers()" title="Controleer alle servers">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                                <path d="M13.5 8A5.5 5.5 0 118 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M8 5v3l2 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="servers-list" id="servers-list">
+                    <!-- Servers will be inserted here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="panel-footer">
+                <button class="generate-button" id="generate-btn" onclick="generateReport()" disabled>
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                        <path d="M9 12l2 2 4-4M3 12V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Genereer rapportage
+                </button>
+            </div>
+
+            <!-- Resize Handle -->
+            <div class="resize-handle" id="left-resize" data-panel="left"></div>
+        </aside>
+
+        <!-- Center - Map -->
+        <div class="map-section" id="map-section">
+            <div id="map" class="map"></div>
+            <div class="map-controls">
+                <button class="map-control-btn" title="Huidige locatie" onclick="gotoCurrentLocation()">
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
+                        <path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Panel - PDF Preview -->
+        <aside class="preview-panel" id="preview-panel">
+            <!-- Resize Handle -->
+            <div class="resize-handle" id="right-resize" data-panel="right"></div>
+
+            <div class="preview-toolbar">
+                <div class="preview-title">
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 4v12a2 2 0 002 2h8a2 2 0 002-2V7.828a2 2 0 00-.586-1.414l-3.828-3.828A2 2 0 0010.172 2H6a2 2 0 00-2 2z" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>Preview</span>
+                </div>
+                <button class="btn-download" id="download-pdf-btn" onclick="downloadPDF()" disabled title="Download PDF">
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>PDF</span>
+                </button>
+                <button class="btn-download btn-dxf" id="download-dxf-btn" onclick="downloadDXF()" title="Download Kadaster als DXF">
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>DXF</span>
+                </button>
+                <div class="preview-nav">
+                    <button class="nav-btn" onclick="prevPage()" id="prev-btn" disabled>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <span class="page-indicator"><span id="current-page">1</span>/<span id="total-pages">0</span></span>
+                    <button class="nav-btn" onclick="nextPage()" id="next-btn" disabled>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="pdf-viewer" id="pdf-viewer">
+                <div class="viewer-empty" id="viewer-empty">
+                    <svg width="64" height="64" viewBox="0 0 80 80" fill="none">
+                        <rect x="16" y="8" width="48" height="64" rx="4" stroke="#475569" stroke-width="2" stroke-dasharray="4 4"/>
+                        <path d="M28 28h24M28 36h24M28 44h16" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <p>Selecteer een locatie</p>
+                </div>
+                <div class="page-container" id="page-container">
+                    <div class="a3-page" id="a3-page"></div>
+                </div>
+            </div>
+
+            <div class="page-thumbnails" id="page-thumbnails"></div>
+        </aside>
+    </main>
+
+    <!-- Layer Selection Modal -->
+    <div class="modal-overlay" id="layer-modal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2>Kaartlaag toevoegen</h2>
+                <button class="modal-close" onclick="closeLayerModal()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M5 5l10 10M5 15L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-search">
+                    <input type="text" id="layer-search" class="search-input" placeholder="Zoek kaartlagen..." oninput="filterLayers()">
+                </div>
+                <div class="layer-categories">
+                    <button class="category-btn active" data-category="all" onclick="filterByCategory('all')">Alle</button>
+                    <button class="category-btn" data-category="topografie" onclick="filterByCategory('topografie')">Topografie</button>
+                    <button class="category-btn" data-category="kadaster" onclick="filterByCategory('kadaster')">Kadaster</button>
+                    <button class="category-btn" data-category="milieu" onclick="filterByCategory('milieu')">Milieu</button>
+                    <button class="category-btn" data-category="infrastructuur" onclick="filterByCategory('infrastructuur')">Infrastructuur</button>
+                    <button class="category-btn" data-category="luchtfoto" onclick="filterByCategory('luchtfoto')">Luchtfoto</button>
+                    <button class="category-btn" data-category="thematisch" onclick="filterByCategory('thematisch')">Thematisch</button>
+                </div>
+                <div class="available-layers" id="available-layers">
+                    <!-- Available layers will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span class="selected-info"><span id="modal-selected-count">0</span> geselecteerd</span>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeLayerModal()">Annuleren</button>
+                    <button class="btn-primary" onclick="addSelectedLayers()">Toevoegen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Instellingen</h2>
+                <button class="modal-close" onclick="closeSettingsModal()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M5 5l10 10M5 15L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-group">
+                    <h3>Standaard kaartlagen</h3>
+                    <p class="settings-desc">Selecteer welke kaartlagen standaard worden toegevoegd aan nieuwe rapporten.</p>
+                    <div class="default-layers-list" id="default-layers-list"></div>
+                </div>
+                <div class="settings-group">
+                    <h3>Weergave</h3>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="setting-auto-generate" checked>
+                        <span>Automatisch preview genereren bij locatiekeuze</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="setting-show-thumbnails" checked>
+                        <span>Toon pagina thumbnails</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="resetSettings()">Standaard herstellen</button>
+                <button class="btn-primary" onclick="saveSettings()">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Report Modal -->
+    <div class="modal-overlay" id="save-modal">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h2>Rapport opslaan</h2>
+                <button class="modal-close" onclick="closeSaveModal()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M5 5l10 10M5 15L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Naam rapport</label>
+                    <input type="text" id="report-name" class="form-input" placeholder="Bijv. Standaard rapport">
+                </div>
+                <div class="form-group">
+                    <label>Beschrijving (optioneel)</label>
+                    <textarea id="report-description" class="form-textarea" placeholder="Korte beschrijving..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeSaveModal()">Annuleren</button>
+                <button class="btn-primary" onclick="confirmSaveReport()">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Server Modal -->
+    <div class="modal-overlay" id="server-modal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2 id="server-modal-title">WMS Server Beheer</h2>
+                <button class="modal-close" onclick="closeServerModal()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M5 5l10 10M5 15L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="server-list-view">
+                    <p class="settings-desc">Beheer WMS/WMTS servers voor kaartlagen. Klik op een server voor details en GetCapabilities.</p>
+                    <div class="server-management-list" id="server-management-list">
+                        <!-- Servers will be loaded here -->
+                    </div>
+                </div>
+                <div id="server-detail-view" style="display: none;">
+                    <button class="btn-secondary btn-small" onclick="showServerList()" style="margin-bottom: 16px;">
+                        ← Terug naar overzicht
+                    </button>
+                    <div class="server-detail-header">
+                        <h3 id="server-detail-name"></h3>
+                        <span id="server-detail-status" class="server-status-badge"></span>
+                    </div>
+                    <div class="server-detail-url" id="server-detail-url"></div>
+                    <div class="server-capabilities" id="server-capabilities">
+                        <h4>GetCapabilities</h4>
+                        <div class="capabilities-loading">
+                            <div class="loading-spinner small"></div>
+                            <span>Capabilities laden...</span>
+                        </div>
+                        <div class="capabilities-content" id="capabilities-content" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="modal-footer-left">
+                    <button class="btn-secondary" onclick="addNewServer()">+ Nieuwe Server</button>
+                </div>
+                <button class="btn-primary" onclick="closeServerModal()">Sluiten</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-header">
+                <div class="loading-spinner"></div>
+                <h3>PDF wordt gegenereerd...</h3>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <p id="loading-status">Samenstellen van tekeningen...</p>
+            <div class="page-progress-list" id="page-progress-list">
+                <!-- Page progress items will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="layers-data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

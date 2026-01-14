@@ -1,0 +1,116 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-14",
+  "servers": [
+    {
+      "id": "pdok-brt",
+      "name": "PDOK BRT Topografie",
+      "url": "https://service.pdok.nl/brt/top10nl/wms/v1_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["top10nl", "gebouw"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Basisregistratie Topografie - TOP10NL kaartlagen"
+    },
+    {
+      "id": "pdok-kadaster",
+      "name": "PDOK Kadaster",
+      "url": "https://service.pdok.nl/kadaster/kadastralekaart/wms/v5_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["Perceel", "OpenbareRuimteNaam", "Bebouwing"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Kadastrale kaart met percelen en grenzen"
+    },
+    {
+      "id": "pdok-bag",
+      "name": "PDOK BAG",
+      "url": "https://service.pdok.nl/lv/bag/wms/v2_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["pand", "verblijfsobject", "standplaats", "ligplaats"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Basisregistratie Adressen en Gebouwen"
+    },
+    {
+      "id": "pdok-luchtfoto",
+      "name": "PDOK Luchtfoto's",
+      "url": "https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["Actueel_orthoHR", "2023_orthoHR", "2022_orthoHR", "2021_orthoHR"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Luchtfoto's van Nederland (actueel en historisch)"
+    },
+    {
+      "id": "pdok-ahn",
+      "name": "PDOK AHN Hoogtekaart",
+      "url": "https://service.pdok.nl/rws/ahn/wms/v1_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["dsm_05m", "dtm_05m"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Actueel Hoogtebestand Nederland"
+    },
+    {
+      "id": "pdok-plu",
+      "name": "PDOK Ruimtelijke Plannen",
+      "url": "https://service.pdok.nl/kadaster/plu/wms/v1_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["enkelbestemming", "dubbelbestemming", "bouwvlak"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Bestemmingsplannen en ruimtelijke plannen"
+    },
+    {
+      "id": "pdok-bodem",
+      "name": "PDOK Bodemkaart",
+      "url": "https://service.pdok.nl/bzk/bro-bodemkaart/wms/v1_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["soilarea"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Bodemtypen en grondsoorten"
+    },
+    {
+      "id": "pdok-grenzen",
+      "name": "PDOK Bestuurlijke Gebieden",
+      "url": "https://service.pdok.nl/kadaster/bestuurlijkegebieden/wms/v1_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["Gemeentegebied", "Provinciegebied", "Waterschapsgebied"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Bestuurlijke grenzen (gemeente, provincie, waterschap)"
+    },
+    {
+      "id": "pdok-natura2000",
+      "name": "PDOK Natura 2000",
+      "url": "https://service.pdok.nl/rvo/natura2000/wms/v1_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["natura2000"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "description": "Europese beschermde natuurgebieden"
+    },
+    {
+      "id": "openstreetmap",
+      "name": "OpenStreetMap",
+      "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "type": "TILE",
+      "version": null,
+      "layers": ["osm"],
+      "crs": ["EPSG:3857"],
+      "status": "active",
+      "description": "OpenStreetMap tegels"
+    }
+  ]
+}

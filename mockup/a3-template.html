@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>A3 Tekening Template - GIS2BIM OpenAnalysis</title>
+    <style>
+        @page {
+            size: A3 landscape;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+
+        .a3-page {
+            width: 420mm;
+            height: 297mm;
+            background: white;
+            margin: 0 auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Main layout grid */
+        .page-content {
+            display: grid;
+            grid-template-columns: 1fr 80mm;
+            grid-template-rows: 1fr;
+            height: 100%;
+        }
+
+        /* Map area */
+        .map-area {
+            background: #e8f4e8;
+            border-right: 0.5mm solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-placeholder {
+            width: 100%;
+            height: 100%;
+            background:
+                linear-gradient(90deg, rgba(200,200,200,0.3) 1px, transparent 1px),
+                linear-gradient(rgba(200,200,200,0.3) 1px, transparent 1px),
+                linear-gradient(135deg, #c8e6c8 0%, #a5d6a7 50%, #81c784 100%);
+            background-size: 10mm 10mm, 10mm 10mm, 100% 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .map-label {
+            background: rgba(255,255,255,0.95);
+            padding: 20px 40px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .map-label h2 {
+            font-size: 24px;
+            color: #2e7d32;
+            margin-bottom: 8px;
+        }
+
+        .map-label p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* North arrow */
+        .north-arrow {
+            position: absolute;
+            top: 15mm;
+            left: 15mm;
+            width: 20mm;
+            height: 20mm;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .north-arrow svg {
+            width: 14mm;
+            height: 14mm;
+        }
+
+        /* Scale bar */
+        .scale-bar {
+            position: absolute;
+            bottom: 15mm;
+            left: 15mm;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .scale-bar-graphic {
+            display: flex;
+            height: 4mm;
+            margin-bottom: 4px;
+        }
+
+        .scale-segment {
+            width: 20mm;
+            border: 1px solid #333;
+        }
+
+        .scale-segment:nth-child(odd) {
+            background: #333;
+        }
+
+        .scale-segment:nth-child(even) {
+            background: white;
+        }
+
+        .scale-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8px;
+            width: 80mm;
+        }
+
+        /* Location marker */
+        .location-marker {
+            position: absolute;
+            top: 50%;
+            left: 45%;
+            transform: translate(-50%, -50%);
+        }
+
+        .marker-dot {
+            width: 8mm;
+            height: 8mm;
+            background: #d32f2f;
+            border: 2mm solid rgba(211, 47, 47, 0.3);
+            border-radius: 50%;
+        }
+
+        /* Info panel */
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            padding: 8mm;
+            background: #fafafa;
+        }
+
+        /* Title block */
+        .title-block {
+            border: 0.5mm solid #333;
+            margin-bottom: 5mm;
+        }
+
+        .title-header {
+            background: #1565c0;
+            color: white;
+            padding: 4mm;
+            text-align: center;
+        }
+
+        .title-header h1 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .title-header p {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+
+        .title-content {
+            padding: 4mm;
+        }
+
+        .title-row {
+            display: flex;
+            border-bottom: 0.25mm solid #ddd;
+            font-size: 9px;
+        }
+
+        .title-row:last-child {
+            border-bottom: none;
+        }
+
+        .title-label {
+            width: 25mm;
+            padding: 2mm;
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .title-value {
+            flex: 1;
+            padding: 2mm;
+            color: #333;
+        }
+
+        /* Legend */
+        .legend {
+            border: 0.5mm solid #333;
+            margin-bottom: 5mm;
+            flex: 1;
+        }
+
+        .legend-header {
+            background: #424242;
+            color: white;
+            padding: 3mm 4mm;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .legend-content {
+            padding: 4mm;
+            font-size: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 3mm;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-symbol {
+            width: 8mm;
+            height: 4mm;
+            margin-right: 3mm;
+            border: 0.25mm solid #333;
+        }
+
+        .legend-text {
+            color: #333;
+        }
+
+        /* Mini map */
+        .mini-map {
+            border: 0.5mm solid #333;
+            margin-bottom: 5mm;
+            height: 45mm;
+        }
+
+        .mini-map-header {
+            background: #424242;
+            color: white;
+            padding: 2mm 4mm;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        .mini-map-content {
+            height: calc(100% - 7mm);
+            background:
+                linear-gradient(90deg, rgba(200,200,200,0.2) 1px, transparent 1px),
+                linear-gradient(rgba(200,200,200,0.2) 1px, transparent 1px),
+                linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            background-size: 5mm 5mm, 5mm 5mm, 100% 100%;
+            position: relative;
+        }
+
+        .mini-marker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4mm;
+            height: 4mm;
+            background: #d32f2f;
+            border-radius: 50%;
+        }
+
+        /* Company block */
+        .company-block {
+            border: 0.5mm solid #333;
+        }
+
+        .company-logo {
+            background: #1565c0;
+            padding: 4mm;
+            text-align: center;
+        }
+
+        .company-logo span {
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .company-info {
+            padding: 3mm 4mm;
+            font-size: 7px;
+            color: #666;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .drawing-number {
+            background: #f5f5f5;
+            padding: 3mm;
+            text-align: center;
+            border-top: 0.25mm solid #ddd;
+        }
+
+        .drawing-number span {
+            font-size: 11px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .a3-page {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="a3-page">
+        <div class="page-content">
+            <!-- Map Area -->
+            <div class="map-area">
+                <div class="map-placeholder">
+                    <div class="map-label">
+                        <h2>TOP10NL Topografische Kaart</h2>
+                        <p>Kaartbeeld wordt hier weergegeven</p>
+                    </div>
+                </div>
+
+                <!-- North Arrow -->
+                <div class="north-arrow">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2L8 10h3v10h2V10h3L12 2z" fill="#333"/>
+                        <text x="12" y="23" text-anchor="middle" font-size="4" fill="#333">N</text>
+                    </svg>
+                </div>
+
+                <!-- Scale Bar -->
+                <div class="scale-bar">
+                    <div class="scale-bar-graphic">
+                        <div class="scale-segment"></div>
+                        <div class="scale-segment"></div>
+                        <div class="scale-segment"></div>
+                        <div class="scale-segment"></div>
+                    </div>
+                    <div class="scale-text">
+                        <span>0</span>
+                        <span>100m</span>
+                        <span>200m</span>
+                        <span>300m</span>
+                        <span>400m</span>
+                    </div>
+                </div>
+
+                <!-- Location Marker -->
+                <div class="location-marker">
+                    <div class="marker-dot"></div>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <!-- Title Block -->
+                <div class="title-block">
+                    <div class="title-header">
+                        <h1>GIS2BIM OpenAnalysis</h1>
+                        <p>Locatie Rapport Generator</p>
+                    </div>
+                    <div class="title-content">
+                        <div class="title-row">
+                            <div class="title-label">Project</div>
+                            <div class="title-value">Locatie Analyse</div>
+                        </div>
+                        <div class="title-row">
+                            <div class="title-label">Adres</div>
+                            <div class="title-value">Binnenhof 1, Den Haag</div>
+                        </div>
+                        <div class="title-row">
+                            <div class="title-label">Gemeente</div>
+                            <div class="title-value">'s-Gravenhage</div>
+                        </div>
+                        <div class="title-row">
+                            <div class="title-label">Coordinaten</div>
+                            <div class="title-value">52.0799, 4.3134 (WGS84)</div>
+                        </div>
+                        <div class="title-row">
+                            <div class="title-label">RD</div>
+                            <div class="title-value">X: 81.234 Y: 454.567</div>
+                        </div>
+                        <div class="title-row">
+                            <div class="title-label">Schaal</div>
+                            <div class="title-value">1:2.500</div>
+                        </div>
+                        <div class="title-row">
+                            <div class="title-label">Datum</div>
+                            <div class="title-value">13 januari 2026</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-header">Legenda</div>
+                    <div class="legend-content">
+                        <div class="legend-item">
+                            <div class="legend-symbol" style="background: #81c784;"></div>
+                            <div class="legend-text">Groenvoorziening</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-symbol" style="background: #90caf9;"></div>
+                            <div class="legend-text">Water</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-symbol" style="background: #ffcc80;"></div>
+                            <div class="legend-text">Bebouwd gebied</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-symbol" style="background: #e0e0e0;"></div>
+                            <div class="legend-text">Verharding</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-symbol" style="background: #ef9a9a;"></div>
+                            <div class="legend-text">Hoofdgebouw</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-symbol" style="background: none; border-style: dashed;"></div>
+                            <div class="legend-text">Perceelgrens</div>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-symbol" style="background: #d32f2f; border-radius: 50%;"></div>
+                            <div class="legend-text">Locatie marker</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mini Map -->
+                <div class="mini-map">
+                    <div class="mini-map-header">Overzichtskaart</div>
+                    <div class="mini-map-content">
+                        <div class="mini-marker"></div>
+                    </div>
+                </div>
+
+                <!-- Company Block -->
+                <div class="company-block">
+                    <div class="company-logo">
+                        <span>GIS2BIM</span>
+                    </div>
+                    <div class="company-info">
+                        OpenAEC Foundation<br>
+                        www.openaec.org<br>
+                        Open Source GIS Tools
+                    </div>
+                    <div class="drawing-number">
+                        <span>Tekening 1 van 15</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
