@@ -26,7 +26,10 @@ class ServerConfig(BaseModel):
     layers: List[str] = Field(default_factory=list)
     crs: List[str] = Field(default_factory=list)
     status: str = "active"
+    category: Optional[str] = "topografie"
     description: Optional[str] = None
+    tileMatrixSet: Optional[str] = None
+    style: Optional[str] = None
 
 
 class ServersConfig(BaseModel):

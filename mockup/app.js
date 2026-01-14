@@ -106,7 +106,7 @@ function initMap() {
     // Set default location on load
     setTimeout(() => {
         setLocation(defaultLat, defaultLng);
-        updateLocationInfo('Grote Kerk, Dordrecht', 'Dordrecht', `${defaultLat.toFixed(5)}, ${defaultLng.toFixed(5)}`);
+        updateLocationInfo('Grote Kerk, Dordrecht', 'Dordrecht', defaultLat, defaultLng);
     }, 500);
 }
 
@@ -762,10 +762,78 @@ function setLocation(lat, lng) {
     generateReportPreview();
 }
 
-function updateLocationInfo(address, municipality, coords) {
+function updateLocationInfo(address, municipality, lat, lng) {
     document.getElementById('selected-address').textContent = address || '-';
     document.getElementById('selected-municipality').textContent = municipality || '-';
-    document.getElementById('selected-coords').textContent = coords || '-';
+
+    // WGS84 coordinates
+    const wgs84Coords = lat && lng ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : '-';
+    document.getElementById('selected-coords-wgs84').textContent = wgs84Coords;
+
+    // Convert to RD (Rijksdriehoek) coordinates
+    if (lat && lng) {
+        const rd = wgs84ToRd(lat, lng);
+        document.getElementById('selected-coords-rd').textContent = `${rd.x.toFixed(2)}, ${rd.y.toFixed(2)}`;
+    } else {
+        document.getElementById('selected-coords-rd').textContent = '-';
+    }
+}
+
+// WGS84 to RD (Rijksdriehoek) conversion
+// Based on the official RDNAP transformation
+function wgs84ToRd(lat, lng) {
+    // Reference point Amersfoort
+    const phi0 = 52.15517440;  // latitude
+    const lam0 = 5.38720621;   // longitude
+    const x0 = 155000;         // RD x
+    const y0 = 463000;         // RD y
+
+    // Coefficients for the polynomial transformation
+    const Rp = [
+        [0, 1, 190094.945],
+        [1, 1, -11832.228],
+        [2, 1, -114.221],
+        [0, 3, -32.391],
+        [1, 0, -0.705],
+        [3, 1, -2.340],
+        [1, 3, -0.608],
+        [0, 2, -0.008],
+        [2, 3, 0.148]
+    ];
+
+    const Rq = [
+        [1, 0, 309056.544],
+        [0, 2, 3638.893],
+        [2, 0, 73.077],
+        [1, 2, -157.984],
+        [3, 0, 59.788],
+        [0, 1, 0.433],
+        [2, 2, -6.439],
+        [1, 1, -0.032],
+        [0, 4, 0.092],
+        [1, 4, -0.054]
+    ];
+
+    // Calculate differences from reference point
+    const dPhi = 0.36 * (lat - phi0);
+    const dLam = 0.36 * (lng - lam0);
+
+    // Calculate RD coordinates using polynomials
+    let x = 0;
+    let y = 0;
+
+    for (const [p, q, coef] of Rp) {
+        x += coef * Math.pow(dPhi, p) * Math.pow(dLam, q);
+    }
+
+    for (const [p, q, coef] of Rq) {
+        y += coef * Math.pow(dPhi, p) * Math.pow(dLam, q);
+    }
+
+    return {
+        x: x0 + x,
+        y: y0 + y
+    };
 }
 
 async function searchAddress() {
@@ -786,7 +854,7 @@ async function searchAddress() {
                 const lng = parseFloat(coords[1]);
                 const lat = parseFloat(coords[2]);
                 setLocation(lat, lng);
-                updateLocationInfo(result.weergavenaam, result.gemeentenaam, `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+                updateLocationInfo(result.weergavenaam, result.gemeentenaam, lat, lng);
             }
         } else {
             alert('Adres niet gevonden.');
@@ -805,12 +873,12 @@ async function reverseGeocode(lat, lng) {
 
         if (data.response?.docs?.length > 0) {
             const result = data.response.docs[0];
-            updateLocationInfo(result.weergavenaam, result.gemeentenaam, `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+            updateLocationInfo(result.weergavenaam, result.gemeentenaam, lat, lng);
         } else {
-            updateLocationInfo('Onbekend', '-', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+            updateLocationInfo('Onbekend', '-', lat, lng);
         }
     } catch (error) {
-        updateLocationInfo('Locatie', '-', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        updateLocationInfo('Locatie', '-', lat, lng);
     }
 }
 
@@ -1845,44 +1913,123 @@ function renderCapabilities(capabilities) {
     `;
 }
 
-// Add new server
+// Add new server - show the form view
 function addNewServer() {
-    const name = prompt('Server naam:');
-    if (!name) return;
+    // Hide list view, show add form view
+    document.getElementById('server-list-view').style.display = 'none';
+    document.getElementById('server-detail-view').style.display = 'none';
+    document.getElementById('server-add-view').style.display = 'block';
+    document.getElementById('server-modal-title').textContent = 'Nieuwe Server Toevoegen';
 
-    const url = prompt('Server URL (WMS endpoint):');
-    if (!url) return;
+    // Reset form
+    document.getElementById('add-server-form').reset();
+}
 
-    const type = prompt('Type (WMS, WMTS, TILE):', 'WMS') || 'WMS';
+// Show server list view (and hide other views)
+function showServerList() {
+    document.getElementById('server-list-view').style.display = 'block';
+    document.getElementById('server-detail-view').style.display = 'none';
+    document.getElementById('server-add-view').style.display = 'none';
+    document.getElementById('server-modal-title').textContent = 'WMS Server Beheer';
+}
+
+// Submit new server form
+async function submitNewServer(event) {
+    event.preventDefault();
+
+    const name = document.getElementById('server-name').value.trim();
+    const url = document.getElementById('server-url').value.trim();
+    const type = document.getElementById('server-type').value;
+    const category = document.getElementById('server-category').value;
+    const description = document.getElementById('server-description').value.trim();
+
+    if (!name || !url) {
+        showNotification('Vul alle verplichte velden in');
+        return;
+    }
 
     const newServer = {
         id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         name: name,
         url: url,
-        type: type.toUpperCase(),
-        version: type === 'WMS' ? '1.3.0' : '1.0.0',
+        type: type,
+        version: type === 'WMS' ? '1.3.0' : type === 'WMTS' ? '1.0.0' : '2.0.0',
         layers: [],
         crs: ['EPSG:28992', 'EPSG:4326'],
-        status: 'active'
+        status: 'active',
+        category: category,
+        description: description || null
     };
 
-    // Save to backend
-    fetch('/api/servers/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newServer)
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Server toevoegen mislukt');
-        return response.json();
-    })
-    .then(() => {
+    try {
+        const response = await fetch('/api/servers/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newServer)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Server toevoegen mislukt');
+        }
+
         showNotification(`Server "${name}" toegevoegd`);
-        loadServersFromAPI();
-    })
-    .catch(error => {
+        showServerList();
+        await loadServersFromAPI();
+
+    } catch (error) {
         showNotification('Fout: ' + error.message);
-    });
+    }
+}
+
+// Test server connection
+async function testServerConnection() {
+    const url = document.getElementById('server-url').value.trim();
+    const type = document.getElementById('server-type').value;
+
+    if (!url) {
+        showNotification('Vul eerst een URL in');
+        return;
+    }
+
+    showNotification('Verbinding testen...');
+
+    try {
+        // Build test URL based on service type
+        let testUrl = url;
+        const separator = url.includes('?') ? '&' : '?';
+
+        if (type === 'WMS') {
+            testUrl = `${url}${separator}SERVICE=WMS&REQUEST=GetCapabilities`;
+        } else if (type === 'WMTS') {
+            testUrl = `${url}${separator}SERVICE=WMTS&REQUEST=GetCapabilities`;
+        } else if (type === 'WFS') {
+            testUrl = `${url}${separator}SERVICE=WFS&REQUEST=GetCapabilities`;
+        }
+
+        // Use fetch with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const response = await fetch(testUrl, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        // With no-cors, we can't read the response, but if we got here without error, it's likely working
+        showNotification('Server bereikbaar!');
+
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            showNotification('Timeout: Server reageert niet');
+        } else {
+            // With no-cors mode, some errors still mean the server is reachable
+            showNotification('Server mogelijk bereikbaar (CORS restrictie)');
+        }
+    }
 }
 
 // Edit server
@@ -1942,3 +2089,327 @@ function deleteServerConfig(serverId) {
         showNotification('Fout: ' + error.message);
     });
 }
+
+// =====================
+// Presets Functions
+// =====================
+
+let presetsData = null;
+let currentPreset = null;
+
+// Load presets from API
+async function loadPresets() {
+    try {
+        const response = await fetch('/api/presets/');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        presetsData = await response.json();
+        renderPresetSelector();
+
+        // Apply default preset if no saved report loaded
+        if (!settings.defaultLayers || settings.defaultLayers.length === 0) {
+            const defaultPresetId = presetsData.defaultPreset || 'architect';
+            const defaultPreset = presetsData.presets?.find(p => p.id === defaultPresetId);
+            if (defaultPreset) {
+                applyPreset(defaultPresetId, false); // Don't show notification on load
+            }
+        }
+    } catch (error) {
+        console.error('Error loading presets:', error);
+    }
+}
+
+// Render preset selector in UI
+function renderPresetSelector() {
+    const container = document.getElementById('preset-selector');
+    if (!container || !presetsData?.presets) return;
+
+    container.innerHTML = `
+        <select id="preset-dropdown" onchange="onPresetChange(this.value)">
+            <option value="">-- Selecteer een boekje preset --</option>
+            ${presetsData.presets.map(preset => `
+                <option value="${preset.id}" ${currentPreset === preset.id ? 'selected' : ''}>
+                    ${getPresetIcon(preset.icon)} ${preset.name}
+                </option>
+            `).join('')}
+        </select>
+        <button class="btn-icon" onclick="openPresetModal()" title="Presets beheren">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="8" cy="8" r="3"/>
+                <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/>
+            </svg>
+        </button>
+    `;
+}
+
+// Get icon for preset type
+function getPresetIcon(iconType) {
+    const icons = {
+        'architect': '🏗️',
+        'developer': '📊',
+        'historian': '📜',
+        'default': '📋'
+    };
+    return icons[iconType] || icons['default'];
+}
+
+// Handle preset change
+function onPresetChange(presetId) {
+    if (presetId) {
+        applyPreset(presetId, true);
+    }
+}
+
+// Apply a preset configuration
+async function applyPreset(presetId, showNotificationMsg = true) {
+    const preset = presetsData?.presets?.find(p => p.id === presetId);
+    if (!preset) return;
+
+    currentPreset = presetId;
+
+    // Convert preset layers to active drawings
+    activeDrawings = preset.layers.map((layerConfig, index) => {
+        // Try to find matching layer in AVAILABLE_LAYERS
+        const baseLayer = AVAILABLE_LAYERS.find(l =>
+            l.id === layerConfig.layer ||
+            l.name.toLowerCase().includes(layerConfig.layer.toLowerCase())
+        );
+
+        return {
+            id: `preset-${presetId}-${index}`,
+            layerId: layerConfig.layer,
+            name: layerConfig.title,
+            description: `${layerConfig.serverId} - ${layerConfig.layer}`,
+            subtitle: layerConfig.serverId,
+            scale: 2500,
+            overlayLayers: [],
+            category: baseLayer?.category || 'thematisch',
+            source: layerConfig.serverId.replace('pdok-', 'PDOK ').replace('hisgis-', 'HisGIS '),
+            color: baseLayer?.color || getColorForServer(layerConfig.serverId),
+            type: 'WMS',
+            url: ''
+        };
+    });
+
+    // Update settings
+    if (preset.pageFormat) {
+        settings.paperSize = preset.pageFormat.size || 'A3';
+        settings.orientation = preset.pageFormat.orientation || 'landscape';
+
+        // Update UI toggles
+        setOrientation(settings.orientation);
+    }
+
+    // Rebuild UI
+    initDrawingsList();
+    initDragDrop();
+
+    // Generate preview if location selected
+    if (selectedLocation) {
+        generateReportPreview();
+    }
+
+    if (showNotificationMsg) {
+        showNotification(`Preset "${preset.name}" geladen met ${preset.layers.length} lagen`);
+    }
+}
+
+// Get color based on server ID
+function getColorForServer(serverId) {
+    const colorMap = {
+        'pdok-luchtfoto': '#3b82f6',
+        'pdok-kadaster': '#10b981',
+        'pdok-bag': '#f59e0b',
+        'pdok-bgt': '#8b5cf6',
+        'pdok-plu': '#ef4444',
+        'pdok-ahn': '#06b6d4',
+        'pdok-brt': '#84cc16',
+        'pdok-opentopo': '#22c55e',
+        'pdok-natura2000': '#22c55e',
+        'pdok-bodem': '#a3a3a3',
+        'pdok-rijksmonumenten': '#dc2626',
+        'pdok-archeologie': '#9333ea',
+        'pdok-bouwjaar': '#f97316',
+        'hisgis-kadaster1832': '#78716c',
+        'topotijdreis': '#64748b'
+    };
+
+    for (const [key, color] of Object.entries(colorMap)) {
+        if (serverId.includes(key)) return color;
+    }
+    return '#666';
+}
+
+// Open preset management modal
+function openPresetModal() {
+    const modal = document.getElementById('preset-modal');
+    if (!modal) {
+        // Create preset modal if not exists
+        createPresetModal();
+    }
+    document.getElementById('preset-modal').classList.add('active');
+    renderPresetList();
+}
+
+// Close preset modal
+function closePresetModal() {
+    document.getElementById('preset-modal').classList.remove('active');
+}
+
+// Create preset modal HTML
+function createPresetModal() {
+    const modal = document.createElement('div');
+    modal.id = 'preset-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal preset-modal">
+            <div class="modal-header">
+                <h3>Boekje Presets Beheren</h3>
+                <button class="modal-close" onclick="closePresetModal()">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="4" y1="4" x2="12" y2="12"/>
+                        <line x1="12" y1="4" x2="4" y2="12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="preset-description">
+                    <p>Presets bevatten vooraf samengestelde combinaties van kaartlagen voor verschillende doelgroepen.</p>
+                </div>
+                <div id="preset-list" class="preset-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="saveCurrentAsPreset()">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 2v12M2 8h12"/>
+                    </svg>
+                    Huidige als preset opslaan
+                </button>
+                <button class="btn-primary" onclick="closePresetModal()">Sluiten</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closePresetModal();
+    });
+}
+
+// Render preset list in modal
+function renderPresetList() {
+    const container = document.getElementById('preset-list');
+    if (!container || !presetsData?.presets) return;
+
+    container.innerHTML = presetsData.presets.map(preset => `
+        <div class="preset-item ${currentPreset === preset.id ? 'active' : ''}" data-id="${preset.id}">
+            <div class="preset-icon">${getPresetIcon(preset.icon)}</div>
+            <div class="preset-info">
+                <h4>${preset.name}</h4>
+                <p>${preset.description || ''}</p>
+                <div class="preset-meta">
+                    <span>${preset.layers?.length || 0} lagen</span>
+                    ${preset.custom ? '<span class="preset-custom-badge">Eigen preset</span>' : ''}
+                </div>
+            </div>
+            <div class="preset-actions">
+                <button class="btn-primary btn-small" onclick="applyPreset('${preset.id}'); closePresetModal();">
+                    Toepassen
+                </button>
+                ${preset.custom ? `
+                    <button class="btn-icon" onclick="deletePreset('${preset.id}')" title="Verwijderen">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="4" y1="4" x2="12" y2="12"/>
+                            <line x1="12" y1="4" x2="4" y2="12"/>
+                        </svg>
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Save current configuration as new preset
+async function saveCurrentAsPreset() {
+    if (activeDrawings.length === 0) {
+        showNotification('Voeg eerst kaartlagen toe');
+        return;
+    }
+
+    const name = prompt('Naam voor de nieuwe preset:');
+    if (!name) return;
+
+    const description = prompt('Beschrijving (optioneel):', '');
+
+    const newPreset = {
+        id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        name: name,
+        description: description,
+        icon: 'default',
+        layers: activeDrawings.map((drawing, index) => ({
+            serverId: drawing.subtitle || drawing.source || 'custom',
+            layer: drawing.layerId || drawing.id,
+            title: drawing.name,
+            order: index + 1
+        })),
+        analysisLayers: [],
+        pageFormat: {
+            size: settings.paperSize,
+            orientation: settings.orientation
+        },
+        custom: true
+    };
+
+    try {
+        const response = await fetch('/api/presets/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newPreset)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Preset opslaan mislukt');
+        }
+
+        // Reload presets
+        await loadPresets();
+        renderPresetList();
+        showNotification(`Preset "${name}" opgeslagen`);
+
+    } catch (error) {
+        showNotification('Fout: ' + error.message);
+    }
+}
+
+// Delete a custom preset
+async function deletePreset(presetId) {
+    if (!confirm('Weet je zeker dat je deze preset wilt verwijderen?')) return;
+
+    try {
+        const response = await fetch(`/api/presets/${presetId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Preset verwijderen mislukt');
+        }
+
+        // Reload presets
+        await loadPresets();
+        renderPresetList();
+        showNotification('Preset verwijderd');
+
+    } catch (error) {
+        showNotification('Fout: ' + error.message);
+    }
+}
+
+// Initialize presets on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load presets after a short delay to allow other init to complete
+    setTimeout(loadPresets, 500);
+});

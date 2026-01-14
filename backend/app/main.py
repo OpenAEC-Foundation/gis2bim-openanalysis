@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
-from app.api import reports, geocoding, layers, servers
+from app.api import reports, geocoding, layers, servers, presets
 
 # Create FastAPI app
 app = FastAPI(
@@ -38,6 +38,7 @@ app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 app.include_router(geocoding.router, prefix="/api/geocoding", tags=["geocoding"])
 app.include_router(layers.router, prefix="/api/layers", tags=["layers"])
 app.include_router(servers.router, prefix="/api/servers", tags=["servers"])
+app.include_router(presets.router, prefix="/api/presets", tags=["presets"])
 
 # Serve static files (frontend) - MUST be last!
 frontend_path = Path(__file__).parent.parent.parent / "mockup"

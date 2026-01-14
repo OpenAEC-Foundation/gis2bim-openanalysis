@@ -60,8 +60,12 @@
                         <span class="info-value" id="selected-municipality">-</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Coördinaten</span>
-                        <span class="info-value" id="selected-coords">-</span>
+                        <span class="info-label">WGS84</span>
+                        <span class="info-value coords-value" id="selected-coords-wgs84">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">RD (EPSG:28992)</span>
+                        <span class="info-value coords-value" id="selected-coords-rd">-</span>
                     </div>
                 </div>
             </div>
@@ -88,6 +92,17 @@
                 <div class="setting-item full-width">
                     <label>Bounding box breedte: <strong id="radius-value">500</strong>m</label>
                     <input type="range" id="radius-input" class="range-input" value="500" min="100" max="2000" step="100">
+                </div>
+            </div>
+
+            <!-- Preset Selector -->
+            <div class="panel-section preset-section">
+                <h2 class="section-title">Boekje Preset</h2>
+                <div id="preset-selector" class="preset-selector">
+                    <!-- Will be populated by JavaScript -->
+                    <select disabled>
+                        <option>Laden...</option>
+                    </select>
                 </div>
             </div>
 
@@ -192,18 +207,20 @@
                     </svg>
                     <span>Preview</span>
                 </div>
-                <button class="btn-download" id="download-pdf-btn" onclick="downloadPDF()" disabled title="Download PDF">
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                        <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span>PDF</span>
-                </button>
-                <button class="btn-download btn-dxf" id="download-dxf-btn" onclick="downloadDXF()" title="Download Kadaster als DXF">
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                        <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span>DXF</span>
-                </button>
+                <div class="download-buttons">
+                    <button class="btn-download" id="download-pdf-btn" onclick="downloadPDF()" disabled title="Download PDF">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                            <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>PDF</span>
+                    </button>
+                    <button class="btn-download btn-dxf" id="download-dxf-btn" onclick="downloadDXF()" title="Download Kadaster als DXF">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                            <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>DXF</span>
+                    </button>
+                </div>
                 <div class="preview-nav">
                     <button class="nav-btn" onclick="prevPage()" id="prev-btn" disabled>
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -355,6 +372,58 @@
                     <div class="server-management-list" id="server-management-list">
                         <!-- Servers will be loaded here -->
                     </div>
+                </div>
+                <div id="server-add-view" style="display: none;">
+                    <button class="btn-secondary btn-small" onclick="showServerList()" style="margin-bottom: 16px;">
+                        ← Terug naar overzicht
+                    </button>
+                    <h3 style="margin-bottom: 16px;">Nieuwe Server Toevoegen</h3>
+                    <form id="add-server-form" class="server-form" onsubmit="submitNewServer(event)">
+                        <div class="form-group">
+                            <label for="server-name">Server Naam *</label>
+                            <input type="text" id="server-name" placeholder="bijv. PDOK Luchtfoto" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="server-url">Server URL *</label>
+                            <input type="url" id="server-url" placeholder="https://service.pdok.nl/..." required>
+                            <span class="form-help">De basis URL van de WMS/WMTS/WFS service</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="server-type">Service Type</label>
+                            <select id="server-type">
+                                <option value="WMS">WMS (Web Map Service)</option>
+                                <option value="WMTS">WMTS (Web Map Tile Service)</option>
+                                <option value="WFS">WFS (Web Feature Service)</option>
+                                <option value="TILE">Tile Server (XYZ)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="server-category">Categorie</label>
+                            <select id="server-category">
+                                <option value="topografie">Topografie</option>
+                                <option value="kadaster">Kadaster</option>
+                                <option value="gebouwen">Gebouwen & BAG</option>
+                                <option value="luchtfoto">Luchtfoto's</option>
+                                <option value="hoogte">Hoogte (AHN)</option>
+                                <option value="planning">Ruimtelijke Ordening</option>
+                                <option value="ondergrond">Ondergrond & Bodem</option>
+                                <option value="natuur">Natuur & Milieu</option>
+                                <option value="erfgoed">Erfgoed & Monumenten</option>
+                                <option value="historisch">Historische Kaarten</option>
+                                <option value="water">Water</option>
+                                <option value="statistiek">Statistiek & CBS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="server-description">Beschrijving (optioneel)</label>
+                            <textarea id="server-description" rows="2" placeholder="Korte beschrijving van de service"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" onclick="showServerList()">Annuleren</button>
+                            <button type="button" class="btn-secondary" onclick="testServerConnection()">Test Verbinding</button>
+                            <button type="submit" class="btn-primary">Server Toevoegen</button>
+                        </div>
+                    </form>
                 </div>
                 <div id="server-detail-view" style="display: none;">
                     <button class="btn-secondary btn-small" onclick="showServerList()" style="margin-bottom: 16px;">

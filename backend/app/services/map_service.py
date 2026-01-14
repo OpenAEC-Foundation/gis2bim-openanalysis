@@ -285,29 +285,148 @@ class MapService:
                 return None
 
         elif layer_config["type"] == "WMTS":
-            # For WMTS, we need to calculate tile coordinates
-            # This is simplified - would need proper tile matrix calculation
-            try:
-                # Use a WMS-like approach for WMTS services that support it
-                params = {
-                    "SERVICE": "WMS",
-                    "VERSION": "1.1.1",
-                    "REQUEST": "GetMap",
-                    "LAYERS": layer_config["layer"],
-                    "SRS": "EPSG:28992",
-                    "BBOX": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}",
-                    "WIDTH": width,
-                    "HEIGHT": height,
-                    "FORMAT": "image/png"
-                }
-                response = await client.get(layer_config["url"].replace("/wmts/", "/wms/"), params=params)
-                if response.status_code == 200:
-                    return response.content
-            except Exception as e:
-                print(f"Error fetching WMTS layer: {e}")
-                return None
+            # WMTS with correct RD tile calculation (based on GIS2BIM)
+            return await self._fetch_wmts_tiles(layer_config, bbox, width, height)
 
         return None
+
+    async def _fetch_wmts_tiles(
+        self,
+        layer_config: dict,
+        bbox: tuple,
+        width: int,
+        height: int
+    ) -> Optional[bytes]:
+        """
+        Fetch WMTS tiles for RD coordinate system (EPSG:28992)
+        Based on GIS2BIM implementation with correct tile matrix origin
+        """
+        client = await self._get_client()
+
+        # WMTS tile matrix parameters for EPSG:28992 (RD)
+        # Origin point of the tile matrix
+        xcorner = -285401.92
+        ycorner = 903402.0
+        pixel_width = 256
+
+        # Zoom level resolutions (meters per pixel)
+        zoomleveldata = {
+            0: 3440.640,
+            1: 1720.320,
+            2: 860.160,
+            3: 430.080,
+            4: 215.040,
+            5: 107.520,
+            6: 53.760,
+            7: 26.880,
+            8: 13.440,
+            9: 6.720,
+            10: 3.360,
+            11: 1.680,
+            12: 0.840,
+            13: 0.420,
+            14: 0.210,
+            15: 0.105,
+            16: 0.0525
+        }
+
+        # Calculate center of bbox
+        center_x = (bbox[0] + bbox[2]) / 2
+        center_y = (bbox[1] + bbox[3]) / 2
+        bbox_width = bbox[2] - bbox[0]
+
+        # Determine zoom level based on desired resolution
+        target_resolution = bbox_width / width
+        zoom_level = 10  # Default
+        for level, resolution in sorted(zoomleveldata.items()):
+            if resolution <= target_resolution:
+                zoom_level = level
+                break
+
+        resolution = zoomleveldata.get(zoom_level, 3.360)
+        tile_size_m = pixel_width * resolution
+
+        # Calculate tile coordinates
+        tile_x = int((center_x - xcorner) / tile_size_m)
+        tile_y = int((ycorner - center_y) / tile_size_m)
+
+        # Calculate how many tiles we need to cover the bbox
+        tiles_needed_x = math.ceil(bbox_width / tile_size_m) + 2
+        tiles_needed_y = math.ceil((bbox[3] - bbox[1]) / tile_size_m) + 2
+
+        # Calculate tile range
+        start_tile_x = tile_x - tiles_needed_x // 2
+        start_tile_y = tile_y - tiles_needed_y // 2
+        end_tile_x = start_tile_x + tiles_needed_x
+        end_tile_y = start_tile_y + tiles_needed_y
+
+        # Fetch and stitch tiles
+        try:
+            from PIL import Image
+            from io import BytesIO
+
+            # Create composite image
+            total_width = tiles_needed_x * pixel_width
+            total_height = tiles_needed_y * pixel_width
+            composite = Image.new('RGBA', (total_width, total_height), (255, 255, 255, 0))
+
+            base_url = layer_config["url"]
+            layer_name = layer_config["layer"]
+
+            for ty_idx, ty in enumerate(range(start_tile_y, end_tile_y)):
+                for tx_idx, tx in enumerate(range(start_tile_x, end_tile_x)):
+                    # Build WMTS GetTile URL
+                    tile_url = (
+                        f"{base_url}?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0"
+                        f"&LAYER={layer_name}"
+                        f"&STYLE=default"
+                        f"&TILEMATRIXSET=EPSG:28992"
+                        f"&TILEMATRIX=EPSG:28992:{zoom_level}"
+                        f"&TILEROW={ty}"
+                        f"&TILECOL={tx}"
+                        f"&FORMAT=image/png"
+                    )
+
+                    try:
+                        response = await client.get(tile_url)
+                        if response.status_code == 200 and "image" in response.headers.get("content-type", ""):
+                            tile_img = Image.open(BytesIO(response.content)).convert('RGBA')
+                            composite.paste(tile_img, (tx_idx * pixel_width, ty_idx * pixel_width))
+                    except Exception as e:
+                        print(f"[WMTS] Error fetching tile ({tx}, {ty}): {e}")
+
+            # Calculate the bbox of the fetched tiles
+            tiles_min_x = xcorner + start_tile_x * tile_size_m
+            tiles_max_y = ycorner - start_tile_y * tile_size_m
+            tiles_max_x = tiles_min_x + tiles_needed_x * tile_size_m
+            tiles_min_y = tiles_max_y - tiles_needed_y * tile_size_m
+
+            # Calculate crop coordinates
+            pixels_per_meter = pixel_width / tile_size_m
+            crop_left = int((bbox[0] - tiles_min_x) * pixels_per_meter)
+            crop_top = int((tiles_max_y - bbox[3]) * pixels_per_meter)
+            crop_right = int((bbox[2] - tiles_min_x) * pixels_per_meter)
+            crop_bottom = int((tiles_max_y - bbox[1]) * pixels_per_meter)
+
+            # Ensure crop coordinates are within bounds
+            crop_left = max(0, crop_left)
+            crop_top = max(0, crop_top)
+            crop_right = min(total_width, crop_right)
+            crop_bottom = min(total_height, crop_bottom)
+
+            # Crop and resize to requested dimensions
+            cropped = composite.crop((crop_left, crop_top, crop_right, crop_bottom))
+            final = cropped.resize((width, height), Image.Resampling.LANCZOS)
+
+            # Convert to bytes
+            output = BytesIO()
+            final.save(output, format='PNG')
+            print(f"[WMTS] SUCCESS: Stitched {tiles_needed_x}x{tiles_needed_y} tiles for {layer_name}")
+            return output.getvalue()
+
+        except Exception as e:
+            print(f"[WMTS] Error stitching tiles: {e}")
+            return None
 
     async def close(self):
         """Close the HTTP client"""

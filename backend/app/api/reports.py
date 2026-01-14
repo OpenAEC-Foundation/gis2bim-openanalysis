@@ -14,6 +14,7 @@ import httpx
 
 from app.services.pdf_generator import PDFGenerator
 from app.services.map_service import MapService
+from app.services.analysis_service import get_location_analysis
 
 router = APIRouter()
 
@@ -242,6 +243,31 @@ async def generate_report_direct(request: DirectReportRequest):
         for i, page_config in enumerate(request.pages):
             layer_id = page_config.get("layer_id", "")
 
+            # Special handling for analysis/summary page
+            if layer_id == "samenvatting" or layer_id == "analysis":
+                # Fetch analysis data
+                try:
+                    analysis_data = await get_location_analysis(lat=lat, lng=lng, radius=500)
+                    pdf_generator.add_analysis_page(
+                        analysis_data=analysis_data,
+                        location=request.location,
+                        page_number=i + 1,
+                        total_pages=total_pages
+                    )
+                except Exception as e:
+                    print(f"[Report] Error fetching analysis: {e}")
+                    # Add placeholder page if analysis fails
+                    pdf_generator.add_page(
+                        title="Locatie Analyse",
+                        subtitle="Data niet beschikbaar",
+                        map_image=None,
+                        location=request.location,
+                        scale=2500,
+                        page_number=i + 1,
+                        total_pages=total_pages
+                    )
+                continue
+
             # Fetch map image
             map_image = await map_service.get_map_image(
                 layer_id=layer_id,
@@ -288,6 +314,7 @@ REPORT_TEMPLATES = {
         {"layer_id": "luchtfoto-actueel", "title": "Luchtfoto", "scale": 2500},
         {"layer_id": "kadastrale-kaart", "title": "Kadastrale Kaart", "scale": 1000},
         {"layer_id": "bestemmingsplan", "title": "Bestemmingsplan", "scale": 2500},
+        {"layer_id": "samenvatting", "title": "Locatie Analyse", "scale": 0},
     ],
     "standard": [
         {"layer_id": "top10nl", "title": "Topografische Kaart", "scale": 2500},
@@ -296,6 +323,7 @@ REPORT_TEMPLATES = {
         {"layer_id": "bestemmingsplan", "title": "Bestemmingsplan", "scale": 2500},
         {"layer_id": "ahn-dsm", "title": "Hoogtekaart (AHN)", "scale": 1000},
         {"layer_id": "bodemkaart", "title": "Bodemkaart", "scale": 5000},
+        {"layer_id": "samenvatting", "title": "Locatie Analyse", "scale": 0},
     ],
     "detailed": [
         {"layer_id": "top10nl", "title": "Topografische Kaart", "scale": 2500},
@@ -308,6 +336,7 @@ REPORT_TEMPLATES = {
         {"layer_id": "bodemkaart", "title": "Bodemkaart", "scale": 5000},
         {"layer_id": "natura2000", "title": "Natura 2000", "scale": 25000},
         {"layer_id": "gemeentegrenzen", "title": "Bestuurlijke Grenzen", "scale": 25000},
+        {"layer_id": "samenvatting", "title": "Locatie Analyse", "scale": 0},
     ]
 }
 
@@ -384,8 +413,38 @@ async def generate_report_from_address(request: AddressReportRequest):
 
         total_pages = len(pages)
 
+        location_data = {
+            "address": address,
+            "municipality": municipality,
+            "lat": lat,
+            "lng": lng
+        }
+
         for i, page_config in enumerate(pages):
             layer_id = page_config.get("layer_id", "")
+
+            # Special handling for analysis/summary page
+            if layer_id == "samenvatting" or layer_id == "analysis":
+                try:
+                    analysis_data = await get_location_analysis(lat=lat, lng=lng, radius=500)
+                    pdf_generator.add_analysis_page(
+                        analysis_data=analysis_data,
+                        location=location_data,
+                        page_number=i + 1,
+                        total_pages=total_pages
+                    )
+                except Exception as e:
+                    print(f"[Report] Error fetching analysis: {e}")
+                    pdf_generator.add_page(
+                        title="Locatie Analyse",
+                        subtitle="Data niet beschikbaar",
+                        map_image=None,
+                        location=location_data,
+                        scale=2500,
+                        page_number=i + 1,
+                        total_pages=total_pages
+                    )
+                continue
 
             map_image = await map_service.get_map_image(
                 layer_id=layer_id,
@@ -505,3 +564,40 @@ async def download_cadastral_dxf(request: DXFRequest):
     except Exception as e:
         print(f"[DXF] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Error generating DXF: {str(e)}")
+
+
+class AnalysisRequest(BaseModel):
+    """Request for location analysis data"""
+    lat: float = Field(..., description="Latitude (WGS84)")
+    lng: float = Field(..., description="Longitude (WGS84)")
+    radius: float = Field(default=500, description="Search radius in meters")
+
+
+@router.post("/analysis")
+async def get_analysis(request: AnalysisRequest):
+    """
+    Get analysis data for a location.
+
+    Returns statistics about:
+    - Buildings (count, age distribution, building year)
+    - Cadastral parcels (count, area)
+    - Neighborhood data (inhabitants, households, municipality)
+
+    Example:
+        POST /api/reports/analysis
+        {
+            "lat": 51.8133,
+            "lng": 4.6601,
+            "radius": 500
+        }
+    """
+    try:
+        analysis = await get_location_analysis(
+            lat=request.lat,
+            lng=request.lng,
+            radius=request.radius
+        )
+        return analysis
+    except Exception as e:
+        print(f"[Analysis] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching analysis: {str(e)}")

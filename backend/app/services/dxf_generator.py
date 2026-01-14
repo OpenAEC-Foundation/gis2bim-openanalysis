@@ -182,10 +182,22 @@ class DXFGenerator:
 
     def get_bytes(self) -> bytes:
         """Get DXF as bytes"""
-        buffer = BytesIO()
-        self.doc.write(buffer)
-        buffer.seek(0)
-        return buffer.getvalue()
+        from io import StringIO
+        import tempfile
+        import os
+
+        # ezdxf needs to write to a file or StringIO
+        # Write to a temp file and read back as bytes
+        with tempfile.NamedTemporaryFile(suffix='.dxf', delete=False) as tmp:
+            tmp_path = tmp.name
+
+        try:
+            self.doc.saveas(tmp_path)
+            with open(tmp_path, 'rb') as f:
+                return f.read()
+        finally:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
     def save(self, filepath: str):
         """Save DXF to file"""
@@ -213,7 +225,7 @@ async def generate_cadastral_dxf(
     # Convert WGS84 to RD (Rijksdriehoek) coordinates
     from app.services.map_service import MapService
     map_service = MapService()
-    rd_x, rd_y = map_service._wgs84_to_rd(lat, lng)
+    rd_x, rd_y = map_service.wgs84_to_rd(lat, lng)
 
     # Calculate bounding box
     bbox = (
