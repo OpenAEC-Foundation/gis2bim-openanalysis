@@ -9,6 +9,10 @@ let baseLayers = {}; // For layer control
 let currentPage = 0;
 let loadedPages = [];
 let activeDrawings = [];
+let previewZoom = 1.0;  // Zoom level for preview (1.0 = 100%)
+let previewPan = { x: 0, y: 0 };  // Pan offset for preview
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
 let settings = {
     paperSize: 'A3',
     orientation: 'landscape',
@@ -79,10 +83,6 @@ function initMap() {
             attribution: '&copy; <a href="https://www.kadaster.nl">Kadaster</a>',
             maxZoom: 19
         }),
-        'TOP10NL': L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.kadaster.nl">Kadaster</a>',
-            maxZoom: 19
-        }),
         'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 19
@@ -103,7 +103,7 @@ function initMap() {
         reverseGeocode(e.latlng.lat, e.latlng.lng);
     });
 
-    // Set default location on load
+    // Set default location on load (preview is initialized by applyPreset after loadPresets)
     setTimeout(() => {
         setLocation(defaultLat, defaultLng);
         updateLocationInfo('Grote Kerk, Dordrecht', 'Dordrecht', defaultLat, defaultLng);
@@ -196,6 +196,51 @@ function initEventListeners() {
             boundingBox.setBounds(bounds);
         }
     });
+
+    // Preview zoom with scroll wheel
+    const pdfViewer = document.getElementById('pdf-viewer');
+    if (pdfViewer) {
+        pdfViewer.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            previewZoom = Math.max(0.5, Math.min(3.0, previewZoom + delta));
+            applyPreviewTransform();
+        }, { passive: false });
+
+        // Pan with mouse drag
+        pdfViewer.style.cursor = 'grab';
+
+        pdfViewer.addEventListener('mousedown', function(e) {
+            if (e.button === 0) {  // Left mouse button
+                isPanning = true;
+                panStart = { x: e.clientX - previewPan.x, y: e.clientY - previewPan.y };
+                pdfViewer.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        });
+
+        pdfViewer.addEventListener('mousemove', function(e) {
+            if (isPanning) {
+                previewPan.x = e.clientX - panStart.x;
+                previewPan.y = e.clientY - panStart.y;
+                applyPreviewTransform();
+            }
+        });
+
+        pdfViewer.addEventListener('mouseup', function(e) {
+            if (isPanning) {
+                isPanning = false;
+                pdfViewer.style.cursor = 'grab';
+            }
+        });
+
+        pdfViewer.addEventListener('mouseleave', function(e) {
+            if (isPanning) {
+                isPanning = false;
+                pdfViewer.style.cursor = 'grab';
+            }
+        });
+    }
 
     // Close modals on background click
     document.querySelectorAll('.modal-overlay').forEach(modal => {
@@ -882,30 +927,7 @@ async function reverseGeocode(lat, lng) {
     }
 }
 
-// Settings
-function setPaperSize(size) {
-    settings.paperSize = size;
-    document.querySelectorAll('.settings-grid .button-toggle')[0]?.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.value === size);
-    });
-
-    const page = document.getElementById('a3-page');
-    if (size === 'A4') {
-        page.style.maxWidth = '80%';
-    } else {
-        page.style.maxWidth = '100%';
-    }
-}
-
-function setOrientation(orientation) {
-    settings.orientation = orientation;
-    document.querySelectorAll('.settings-grid .button-toggle')[1]?.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.value === orientation);
-    });
-
-    const page = document.getElementById('a3-page');
-    page.classList.toggle('portrait', orientation === 'portrait');
-}
+// Settings: A3 landscape is default (no selection needed)
 
 // Report Preview Generation
 function generateReportPreview() {
@@ -1003,10 +1025,59 @@ function selectDrawingItem(index) {
     goToPage(index);
 }
 
+// Refresh the current preview (re-render current page)
+function refreshPreview() {
+    if (selectedLocation && activeDrawings.length > 0) {
+        // Re-initialize all pages as loaded
+        loadedPages = activeDrawings.map((_, i) => i);
+        createThumbnails();
+        document.querySelector('.page-container')?.classList.add('visible');
+        document.querySelector('.page-thumbnails')?.classList.add('visible');
+        document.querySelector('.viewer-empty')?.classList.add('hidden');
+        document.querySelectorAll('.drawing-item').forEach(item => item.classList.add('ready'));
+        document.querySelectorAll('.thumb').forEach(thumb => thumb.classList.add('ready'));
+        // Re-render current page
+        renderPage(currentPage);
+        updatePageCounter();
+        updateNavigation();
+        showNotification('Preview vernieuwd');
+    }
+}
+
+// Apply zoom and pan transform to preview
+function applyPreviewTransform() {
+    const a3Page = document.getElementById('a3-page');
+    if (a3Page) {
+        a3Page.style.transform = `translate(${previewPan.x}px, ${previewPan.y}px) scale(${previewZoom})`;
+        a3Page.style.transformOrigin = 'center center';
+    }
+    // Update zoom indicator in toolbar if exists
+    const zoomIndicator = document.getElementById('zoom-indicator');
+    if (zoomIndicator) {
+        zoomIndicator.textContent = `${Math.round(previewZoom * 100)}%`;
+    }
+}
+
+// Legacy alias
+function applyPreviewZoom() {
+    applyPreviewTransform();
+}
+
+// Reset zoom and pan to default
+function resetPreviewZoom() {
+    previewZoom = 1.0;
+    previewPan = { x: 0, y: 0 };
+    applyPreviewTransform();
+}
+
 function goToPage(index) {
     if (index < 0 || index >= activeDrawings.length) return;
 
     currentPage = index;
+
+    // Reset zoom and pan when changing pages
+    previewZoom = 1.0;
+    previewPan = { x: 0, y: 0 };
 
     // Update active states
     document.querySelectorAll('.drawing-item').forEach((item, i) => {
@@ -1019,80 +1090,221 @@ function goToPage(index) {
 
     // Render page
     renderPage(index);
+    applyPreviewTransform();  // Update zoom indicator
     updatePageCounter();
     updateNavigation();
 }
 
 function renderPage(index) {
     const drawing = activeDrawings[index];
-    if (!drawing) return;
+    if (!drawing || !selectedLocation) return;
 
     const address = document.getElementById('selected-address').textContent;
     const municipality = document.getElementById('selected-municipality').textContent;
-    const coords = document.getElementById('selected-coords').textContent;
-
-    // Determine background class based on category
-    const bgClass = getBgClass(drawing);
+    const coordsWgs84 = document.getElementById('selected-coords-wgs84').textContent;
+    const coordsRd = document.getElementById('selected-coords-rd').textContent;
 
     const page = document.getElementById('a3-page');
+
+    // Check if this is a cover page
+    if (drawing.serverId === 'cover' || drawing.layerId === 'voorblad') {
+        const presetName = currentPreset ?
+            FALLBACK_PRESETS.presets.find(p => p.id === currentPreset)?.name || 'Locatie Rapport' :
+            'Locatie Rapport';
+
+        page.innerHTML = `
+            <div class="cover-page">
+                <div class="cover-header">
+                    <div class="cover-logo">
+                        <strong>GIS2BIM</strong>
+                        <span>OpenAnalysis</span>
+                    </div>
+                </div>
+                <div class="cover-content">
+                    <h1 class="cover-title">Locatie Rapport</h1>
+                    <h2 class="cover-subtitle">${presetName}</h2>
+                    <div class="cover-location">
+                        <div class="cover-address">${address}</div>
+                        <div class="cover-municipality">${municipality}</div>
+                    </div>
+                    <div class="cover-details">
+                        <div class="cover-detail-row">
+                            <span class="cover-label">WGS84</span>
+                            <span class="cover-value">${coordsWgs84}</span>
+                        </div>
+                        <div class="cover-detail-row">
+                            <span class="cover-label">RD (EPSG:28992)</span>
+                            <span class="cover-value">${coordsRd}</span>
+                        </div>
+                        <div class="cover-detail-row">
+                            <span class="cover-label">Bounding Box</span>
+                            <span class="cover-value">${settings.radius * 2}m x ${Math.round(settings.radius * 2 / 1.414)}m</span>
+                        </div>
+                        <div class="cover-detail-row">
+                            <span class="cover-label">Aantal kaarten</span>
+                            <span class="cover-value">${activeDrawings.length - 1}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="cover-footer">
+                    <div class="cover-date">${new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                    <div class="cover-powered">Powered by OpenAEC Foundation</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Check if this is a backcover page
+    if (drawing.serverId === 'backcover' || drawing.layerId === 'achterblad') {
+        const presetName = currentPreset ?
+            FALLBACK_PRESETS.presets.find(p => p.id === currentPreset)?.name || 'Locatie Rapport' :
+            'Locatie Rapport';
+
+        // Get list of layers for table of contents (exclude cover and backcover)
+        const contentLayers = activeDrawings.filter(d =>
+            d.serverId !== 'cover' &&
+            d.serverId !== 'backcover' &&
+            d.layerId !== 'voorblad' &&
+            d.layerId !== 'achterblad'
+        );
+
+        page.innerHTML = `
+            <div class="backcover-page">
+                <div class="backcover-header">
+                    <div class="backcover-title">Inhoudsopgave</div>
+                </div>
+                <div class="backcover-content">
+                    <div class="backcover-toc">
+                        ${contentLayers.map((layer, i) => `
+                            <div class="toc-item">
+                                <span class="toc-number">${i + 2}</span>
+                                <span class="toc-name">${layer.name}</span>
+                                <span class="toc-dots"></span>
+                                <span class="toc-source">${layer.source || layer.serverId}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="backcover-info">
+                        <div class="backcover-info-section">
+                            <h4>Databronnen</h4>
+                            <p>PDOK - Publieke Dienstverlening Op de Kaart<br>
+                            Kadaster, RWS, Ministerie van BZK</p>
+                        </div>
+                        <div class="backcover-info-section">
+                            <h4>Coördinatenstelsel</h4>
+                            <p>RD New (EPSG:28992) - Rijksdriehoekscoördinaten</p>
+                        </div>
+                        <div class="backcover-info-section">
+                            <h4>Disclaimer</h4>
+                            <p>Dit rapport is automatisch gegenereerd. Controleer de gegevens bij de officiële bronnen voor juridische doeleinden.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="backcover-footer">
+                    <div class="backcover-logo">
+                        <strong>GIS2BIM</strong>
+                        <span>OpenAnalysis</span>
+                    </div>
+                    <div class="backcover-credits">
+                        <div>Powered by OpenAEC Foundation</div>
+                        <div class="backcover-url">github.com/openaec/gis2bim</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Get WMS URL for this layer
+    const wmsUrl = getWmsPreviewUrl(drawing);
+
     page.innerHTML = `
         <div class="page-content">
-            <div class="page-map-area ${bgClass}">
-                <div class="page-map-placeholder">${drawing.name}</div>
+            <div class="page-map-area">
+                ${wmsUrl ? `
+                    <img class="wms-preview-img" src="${wmsUrl}" alt="${drawing.name}"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="page-map-placeholder" style="display:none;">${drawing.name}<br><small>Kaart niet beschikbaar</small></div>
+                ` : `
+                    <div class="page-map-placeholder">${drawing.name}<br><small>Analyse pagina</small></div>
+                `}
             </div>
-            <div class="page-info-panel">
-                <div class="page-title-block">
-                    <h3>GIS2BIM OpenAnalysis</h3>
-                    <p>Locatie Rapport</p>
+            <div class="page-footer-strip">
+                <div class="footer-logo">
+                    <strong>GIS2BIM</strong><br>
+                    <small>OpenAnalysis</small>
                 </div>
-                <div class="page-details">
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Tekening</span>
-                        <span class="page-detail-value">${index + 1} / ${activeDrawings.length}</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Type</span>
-                        <span class="page-detail-value">${drawing.name}</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Adres</span>
-                        <span class="page-detail-value">${address}</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Gemeente</span>
-                        <span class="page-detail-value">${municipality}</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Coördinaten</span>
-                        <span class="page-detail-value">${coords}</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Bounding box</span>
-                        <span class="page-detail-value">${settings.radius}m x ${settings.radius}m</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Schaal</span>
-                        <span class="page-detail-value">1:${(drawing.scale || 2500).toLocaleString('nl-NL')}</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Formaat</span>
-                        <span class="page-detail-value">${settings.paperSize} ${settings.orientation === 'landscape' ? 'liggend' : 'staand'}</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Bron</span>
-                        <span class="page-detail-value">${drawing.source}</span>
-                    </div>
-                    <div class="page-detail-row">
-                        <span class="page-detail-label">Datum</span>
-                        <span class="page-detail-value">${new Date().toLocaleDateString('nl-NL')}</span>
-                    </div>
+                <div class="footer-title">
+                    <strong>${drawing.name}</strong><br>
+                    <small>${address}</small>
                 </div>
-                <div class="page-footer">
-                    GIS2BIM OpenAnalysis &bull; OpenAEC Foundation
+                <div class="footer-page">
+                    <strong>${index + 1}</strong><br>
+                    <small>van ${activeDrawings.length}</small>
+                </div>
+                <div class="footer-info">
+                    <small>Schaal 1:${(drawing.scale || 2500).toLocaleString('nl-NL')} | ${municipality} | ${new Date().toLocaleDateString('nl-NL')}</small>
                 </div>
             </div>
         </div>
     `;
+}
+
+// Build WMS preview URL for a layer
+function getWmsPreviewUrl(drawing) {
+    if (!selectedLocation || !drawing) return null;
+
+    // Skip analysis layers
+    if (drawing.layerId === 'samenvatting' || drawing.serverId === 'analysis') {
+        return null;
+    }
+
+    // WMS server mapping
+    const wmsServers = {
+        'pdok-luchtfoto': { url: 'https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0', layer: 'Actueel_orthoHR' },
+        'pdok-kadaster': { url: 'https://service.pdok.nl/kadaster/kadastralekaart/wms/v5_0', layer: 'Perceel' },
+        'pdok-bag': { url: 'https://service.pdok.nl/lv/bag/wms/v2_0', layer: 'pand' },
+        'pdok-bgt': { url: 'https://service.pdok.nl/lv/bgt/wms/v1_0', layer: 'pand' },
+        'pdok-plu': { url: 'https://service.pdok.nl/kadaster/plu/wms/v1_0', layer: 'enkelbestemming' },
+        'pdok-ahn': { url: 'https://service.pdok.nl/rws/ahn/wms/v1_0', layer: 'dsm_05m' },
+        'pdok-brt': { url: 'https://service.pdok.nl/brt/top10nl/wms/v1_0', layer: 'top10nl' },
+        'pdok-bodem': { url: 'https://service.pdok.nl/bzk/bro-bodemkaart/wms/v1_0', layer: 'soilarea' },
+        'pdok-natura2000': { url: 'https://service.pdok.nl/rvo/natura2000/wms/v1_0', layer: 'natura2000' },
+        'pdok-sonderingen': { url: 'https://service.pdok.nl/bzk/brocptkenset/wms/v1_0', layer: 'cpt_kenset' },
+        'pdok-rijksmonumenten': { url: 'https://service.pdok.nl/rce/rma/wms/v1_0', layer: 'rijksmonumenten' },
+        'pdok-grenzen': { url: 'https://service.pdok.nl/kadaster/bestuurlijkegebieden/wms/v1_0', layer: 'Gemeentegebied' },
+    };
+
+    // Get server info
+    const serverInfo = wmsServers[drawing.serverId];
+    if (!serverInfo) return null;
+
+    // Convert WGS84 to RD
+    const rd = wgs84ToRd(selectedLocation.lat, selectedLocation.lng);
+
+    // Calculate bbox with A3 landscape aspect ratio (1.414:1)
+    // Width is based on radius setting, height is proportionally smaller
+    const halfWidth = (settings.radius || 500);
+    const halfHeight = halfWidth / 1.414;  // A3 aspect ratio
+    const bbox = `${rd.x - halfWidth},${rd.y - halfHeight},${rd.x + halfWidth},${rd.y + halfHeight}`;
+
+    // Build WMS GetMap URL - higher resolution for readable labels
+    const layer = drawing.layerId || serverInfo.layer;
+    const params = new URLSearchParams({
+        SERVICE: 'WMS',
+        VERSION: '1.3.0',
+        REQUEST: 'GetMap',
+        LAYERS: layer,
+        CRS: 'EPSG:28992',
+        BBOX: bbox,
+        WIDTH: '1600',
+        HEIGHT: '1132',
+        FORMAT: 'image/png',
+        STYLES: ''
+    });
+
+    return `${serverInfo.url}?${params.toString()}`;
 }
 
 function getBgClass(drawing) {
@@ -2097,26 +2309,106 @@ function deleteServerConfig(serverId) {
 let presetsData = null;
 let currentPreset = null;
 
-// Load presets from API
+// Fallback presets data (used when API not available)
+const FALLBACK_PRESETS = {
+    presets: [
+        {
+            id: 'architect',
+            name: 'Architect',
+            description: 'Kaarten voor architecten - focus op ruimtelijke context, bestemmingsplan en bebouwing',
+            icon: 'architect',
+            layers: [
+                { serverId: 'cover', layer: 'voorblad', title: 'Voorblad', order: 0 },
+                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 1 },
+                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Percelen', order: 2 },
+                { serverId: 'pdok-bag', layer: 'pand', title: 'BAG Panden', order: 3 },
+                { serverId: 'pdok-plu', layer: 'enkelbestemming', title: 'Bestemmingsplan', order: 4 },
+                { serverId: 'pdok-ahn', layer: 'dsm_05m', title: 'AHN Hoogtekaart', order: 5 },
+                { serverId: 'pdok-brt', layer: 'top10nl', title: 'Topografische Kaart', order: 6 },
+                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 },
+                { serverId: 'backcover', layer: 'achterblad', title: 'Achterblad', order: 99 }
+            ]
+        },
+        {
+            id: 'projectontwikkelaar',
+            name: 'Projectontwikkelaar',
+            description: 'Kaarten voor projectontwikkelaars - focus op grondwaarde, bestemmingen en statistieken',
+            icon: 'developer',
+            layers: [
+                { serverId: 'cover', layer: 'voorblad', title: 'Voorblad', order: 0 },
+                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 1 },
+                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Percelen', order: 2 },
+                { serverId: 'pdok-plu', layer: 'enkelbestemming', title: 'Bestemmingsplan Enkel', order: 3 },
+                { serverId: 'pdok-plu', layer: 'dubbelbestemming', title: 'Bestemmingsplan Dubbel', order: 4 },
+                { serverId: 'pdok-plu', layer: 'bouwvlak', title: 'Bouwvlakken', order: 5 },
+                { serverId: 'pdok-natura2000', layer: 'natura2000', title: 'Natura 2000 Gebieden', order: 6 },
+                { serverId: 'pdok-bodem', layer: 'soilarea', title: 'Bodemkaart', order: 7 },
+                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 },
+                { serverId: 'backcover', layer: 'achterblad', title: 'Achterblad', order: 99 }
+            ]
+        },
+        {
+            id: 'bouwhistoricus',
+            name: 'Bouwhistoricus',
+            description: 'Kaarten voor bouwhistorici - focus op historische kaarten, monumenten en oude kadasters',
+            icon: 'historian',
+            layers: [
+                { serverId: 'cover', layer: 'voorblad', title: 'Voorblad', order: 0 },
+                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 1 },
+                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Actueel', order: 2 },
+                { serverId: 'pdok-bag', layer: 'pand', title: 'BAG Panden', order: 3 },
+                { serverId: 'pdok-rijksmonumenten', layer: 'rijksmonumenten', title: 'Rijksmonumenten', order: 4 },
+                { serverId: 'pdok-brt', layer: 'top10nl', title: 'Topografische Kaart', order: 5 },
+                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 },
+                { serverId: 'backcover', layer: 'achterblad', title: 'Achterblad', order: 99 }
+            ]
+        },
+        {
+            id: 'constructeur',
+            name: 'Constructeur',
+            description: 'Kaarten voor constructeurs - focus op ondergrond, sonderingen en hoogtedata',
+            icon: 'constructeur',
+            layers: [
+                { serverId: 'cover', layer: 'voorblad', title: 'Voorblad', order: 0 },
+                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 1 },
+                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Percelen', order: 2 },
+                { serverId: 'pdok-bag', layer: 'pand', title: 'BAG Panden', order: 3 },
+                { serverId: 'pdok-bgt', layer: 'bgt_pand', title: 'BGT Gebouwen', order: 4 },
+                { serverId: 'pdok-sonderingen', layer: 'cpt_kenset', title: 'Sonderingen (CPT)', order: 5 },
+                { serverId: 'pdok-ahn', layer: 'dsm_05m', title: 'AHN Hoogtekaart (DSM)', order: 6 },
+                { serverId: 'pdok-ahn', layer: 'dtm_05m', title: 'AHN Hoogtekaart (DTM)', order: 7 },
+                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 },
+                { serverId: 'backcover', layer: 'achterblad', title: 'Achterblad', order: 99 }
+            ]
+        }
+    ],
+    defaultPreset: 'architect'
+};
+
+// Load presets from API or use fallback
 async function loadPresets() {
     try {
-        const response = await fetch('/api/presets/');
+        // Try API first
+        const apiUrl = window.location.protocol === 'file:'
+            ? 'http://localhost:8000/api/presets/'
+            : '/api/presets/';
+        const response = await fetch(apiUrl);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
         presetsData = await response.json();
-        renderPresetSelector();
-
-        // Apply default preset if no saved report loaded
-        if (!settings.defaultLayers || settings.defaultLayers.length === 0) {
-            const defaultPresetId = presetsData.defaultPreset || 'architect';
-            const defaultPreset = presetsData.presets?.find(p => p.id === defaultPresetId);
-            if (defaultPreset) {
-                applyPreset(defaultPresetId, false); // Don't show notification on load
-            }
-        }
     } catch (error) {
-        console.error('Error loading presets:', error);
+        console.warn('Using fallback presets:', error.message);
+        presetsData = FALLBACK_PRESETS;
+    }
+
+    renderPresetSelector();
+
+    // Apply default preset
+    const defaultPresetId = presetsData.defaultPreset || 'architect';
+    const defaultPreset = presetsData.presets?.find(p => p.id === defaultPresetId);
+    if (defaultPreset) {
+        applyPreset(defaultPresetId, false);
     }
 }
 
@@ -2149,6 +2441,7 @@ function getPresetIcon(iconType) {
         'architect': '🏗️',
         'developer': '📊',
         'historian': '📜',
+        'constructeur': '🔩',
         'default': '📋'
     };
     return icons[iconType] || icons['default'];
@@ -2179,6 +2472,7 @@ async function applyPreset(presetId, showNotificationMsg = true) {
         return {
             id: `preset-${presetId}-${index}`,
             layerId: layerConfig.layer,
+            serverId: layerConfig.serverId,  // Important for WMS preview!
             name: layerConfig.title,
             description: `${layerConfig.serverId} - ${layerConfig.layer}`,
             subtitle: layerConfig.serverId,
@@ -2192,22 +2486,43 @@ async function applyPreset(presetId, showNotificationMsg = true) {
         };
     });
 
-    // Update settings
-    if (preset.pageFormat) {
-        settings.paperSize = preset.pageFormat.size || 'A3';
-        settings.orientation = preset.pageFormat.orientation || 'landscape';
-
-        // Update UI toggles
-        setOrientation(settings.orientation);
-    }
+    // Settings are fixed: A3 landscape
 
     // Rebuild UI
     initDrawingsList();
     initDragDrop();
 
-    // Generate preview if location selected
+    // Initialize WMS preview if location selected
     if (selectedLocation) {
-        generateReportPreview();
+        // Reset zoom and pan
+        previewZoom = 1.0;
+        previewPan = { x: 0, y: 0 };
+        currentPage = 0;
+
+        // Mark all pages as loaded for WMS preview
+        loadedPages = activeDrawings.map((_, i) => i);
+        // Show thumbnails and page container
+        createThumbnails();
+        document.querySelector('.page-container')?.classList.add('visible');
+        document.querySelector('.page-thumbnails')?.classList.add('visible');
+        document.querySelector('.viewer-empty')?.classList.add('hidden');
+        // Mark all drawings and thumbnails as ready
+        document.querySelectorAll('.drawing-item').forEach(item => {
+            item.classList.add('ready');
+        });
+        document.querySelectorAll('.thumb').forEach(thumb => {
+            thumb.classList.add('ready');
+        });
+        // Render first page (cover page)
+        if (activeDrawings.length > 0) {
+            renderPage(0);
+            applyPreviewTransform();
+            updatePageCounter();
+            updateNavigation();
+            // Mark first item and thumb as active
+            document.querySelector('.drawing-item')?.classList.add('active');
+            document.querySelector('.thumb')?.classList.add('active');
+        }
     }
 
     if (showNotificationMsg) {
@@ -2218,6 +2533,9 @@ async function applyPreset(presetId, showNotificationMsg = true) {
 // Get color based on server ID
 function getColorForServer(serverId) {
     const colorMap = {
+        'cover': '#1e3a5f',
+        'backcover': '#1e3a5f',
+        'analysis': '#334155',
         'pdok-luchtfoto': '#3b82f6',
         'pdok-kadaster': '#10b981',
         'pdok-bag': '#f59e0b',
@@ -2228,6 +2546,7 @@ function getColorForServer(serverId) {
         'pdok-opentopo': '#22c55e',
         'pdok-natura2000': '#22c55e',
         'pdok-bodem': '#a3a3a3',
+        'pdok-sonderingen': '#78716c',
         'pdok-rijksmonumenten': '#dc2626',
         'pdok-archeologie': '#9333ea',
         'pdok-bouwjaar': '#f97316',
@@ -2356,8 +2675,8 @@ async function saveCurrentAsPreset() {
         })),
         analysisLayers: [],
         pageFormat: {
-            size: settings.paperSize,
-            orientation: settings.orientation
+            size: 'A3',
+            orientation: 'landscape'
         },
         custom: true
     };
@@ -2410,6 +2729,6 @@ async function deletePreset(presetId) {
 
 // Initialize presets on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Load presets after a short delay to allow other init to complete
-    setTimeout(loadPresets, 500);
+    // Load presets after location is set (initMap waits 500ms, so we wait 600ms)
+    setTimeout(loadPresets, 600);
 });

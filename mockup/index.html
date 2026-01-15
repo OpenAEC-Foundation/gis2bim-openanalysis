@@ -73,22 +73,6 @@
             <!-- Settings Section -->
             <div class="panel-section">
                 <h2 class="section-title">Instellingen</h2>
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <label>Formaat</label>
-                        <div class="button-toggle">
-                            <button class="toggle-btn active" data-value="A3" onclick="setPaperSize('A3')">A3</button>
-                            <button class="toggle-btn" data-value="A4" onclick="setPaperSize('A4')">A4</button>
-                        </div>
-                    </div>
-                    <div class="setting-item">
-                        <label>Oriëntatie</label>
-                        <div class="button-toggle">
-                            <button class="toggle-btn active" data-value="landscape" onclick="setOrientation('landscape')">Liggend</button>
-                            <button class="toggle-btn" data-value="portrait" onclick="setOrientation('portrait')">Staand</button>
-                        </div>
-                    </div>
-                </div>
                 <div class="setting-item full-width">
                     <label>Bounding box breedte: <strong id="radius-value">500</strong>m</label>
                     <input type="range" id="radius-input" class="range-input" value="500" min="100" max="2000" step="100">
@@ -140,42 +124,23 @@
                 </div>
             </div>
 
-            <!-- Server Settings (collapsible, hidden by default) -->
-            <div class="panel-section servers-section collapsed" id="servers-section">
-                <div class="section-header clickable" onclick="toggleServersSection()">
-                    <h2 class="section-title">
-                        <svg class="collapse-icon" width="10" height="10" viewBox="0 0 16 16" fill="none">
-                            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                        WMS Servers
-                    </h2>
-                    <div class="section-actions">
-                        <button class="btn-small btn-icon-only" onclick="event.stopPropagation(); openServerModal()" title="Server toevoegen">
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                                <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            </svg>
-                        </button>
-                        <button class="btn-small btn-icon-only" onclick="event.stopPropagation(); checkAllServers()" title="Controleer alle servers">
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                                <path d="M13.5 8A5.5 5.5 0 118 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                <path d="M8 5v3l2 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="servers-list" id="servers-list">
-                    <!-- Servers will be inserted here by JavaScript -->
-                </div>
-            </div>
 
-            <!-- Footer -->
+            <!-- Footer with Download Buttons -->
             <div class="panel-footer">
-                <button class="generate-button" id="generate-btn" onclick="generateReport()" disabled>
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                        <path d="M9 12l2 2 4-4M3 12V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    Genereer rapportage
-                </button>
+                <div class="download-buttons" style="display: flex; gap: 8px;">
+                    <button class="btn-download" id="download-pdf-btn" onclick="downloadPDF()" style="flex: 1;" title="Download PDF">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                            <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Download PDF</span>
+                    </button>
+                    <button class="btn-download btn-dxf" id="download-dxf-btn" onclick="downloadDXF()" style="flex: 1;" title="Download Kadaster als DXF">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                            <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Download DXF</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Resize Handle -->
@@ -207,20 +172,12 @@
                     </svg>
                     <span>Preview</span>
                 </div>
-                <div class="download-buttons">
-                    <button class="btn-download" id="download-pdf-btn" onclick="downloadPDF()" disabled title="Download PDF">
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                            <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>PDF</span>
-                    </button>
-                    <button class="btn-download btn-dxf" id="download-dxf-btn" onclick="downloadDXF()" title="Download Kadaster als DXF">
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                            <path d="M3 14v3a2 2 0 002 2h10a2 2 0 002-2v-3M7 10l3 3 3-3M10 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>DXF</span>
-                    </button>
-                </div>
+                <button class="nav-btn" onclick="refreshPreview()" title="Ververs preview">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                        <path d="M14 8A6 6 0 114 3.5M14 2v4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <span id="zoom-indicator" class="page-indicator" onclick="resetPreviewZoom()" title="Klik om te resetten" style="cursor: pointer; min-width: 45px;">100%</span>
                 <div class="preview-nav">
                     <button class="nav-btn" onclick="prevPage()" id="prev-btn" disabled>
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">

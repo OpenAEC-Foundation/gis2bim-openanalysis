@@ -742,11 +742,7 @@ body {
 
 .a3-page.portrait { aspect-ratio: 1 / 1.414; }
 
-.page-content {
-    display: grid;
-    grid-template-columns: 1fr 25%;
-    height: 100%;
-}
+/* Note: .page-content styles moved to WMS Preview section */
 
 .page-map-area { position: relative; overflow: hidden; }
 
@@ -2021,4 +2017,410 @@ body {
     margin-top: 8px;
     padding-top: 16px;
     border-top: 1px solid var(--border);
+}
+
+/* =====================
+   WMS Preview Styles
+   ===================== */
+
+/* Full page layout for WMS preview */
+.page-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.page-map-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+}
+
+/* WMS Preview Image */
+.wms-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.wms-preview-img.loading {
+    opacity: 0.5;
+}
+
+/* Page Footer Strip */
+.page-footer-strip {
+    height: 48px;
+    background: linear-gradient(to right, #1e293b, #334155);
+    border-top: 2px solid var(--primary);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+.footer-logo {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 80px;
+    padding-right: 12px;
+    border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.footer-logo strong {
+    color: var(--primary-light);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.footer-logo small {
+    color: rgba(255,255,255,0.6);
+    font-size: 8px;
+}
+
+.footer-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.footer-title strong {
+    display: block;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.footer-title small {
+    display: block;
+    color: rgba(255,255,255,0.6);
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.footer-page {
+    text-align: center;
+    min-width: 50px;
+    padding: 0 12px;
+    border-left: 1px solid rgba(255,255,255,0.2);
+    border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.footer-page strong {
+    display: block;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.footer-page small {
+    display: block;
+    color: rgba(255,255,255,0.5);
+    font-size: 8px;
+}
+
+.footer-info {
+    min-width: 140px;
+    text-align: right;
+}
+
+.footer-info small {
+    color: rgba(255,255,255,0.5);
+    font-size: 9px;
+    line-height: 1.4;
+}
+
+/* =====================
+   Cover Page Styles
+   ===================== */
+
+.cover-page {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 40px;
+    color: white;
+}
+
+.cover-header {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.cover-logo {
+    text-align: right;
+}
+
+.cover-logo strong {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #3b82f6;
+    letter-spacing: 1px;
+}
+
+.cover-logo span {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 2px;
+}
+
+.cover-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.cover-title {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+}
+
+.cover-subtitle {
+    font-size: 18px;
+    font-weight: 400;
+    color: #3b82f6;
+    margin-bottom: 40px;
+    letter-spacing: 1px;
+}
+
+.cover-location {
+    margin-bottom: 30px;
+}
+
+.cover-address {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.cover-municipality {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+}
+
+.cover-details {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 20px 30px;
+    min-width: 300px;
+}
+
+.cover-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 12px;
+}
+
+.cover-detail-row:last-child {
+    border-bottom: none;
+}
+
+.cover-label {
+    color: rgba(255,255,255,0.6);
+}
+
+.cover-value {
+    font-weight: 500;
+    font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+.cover-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.cover-date {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+}
+
+.cover-powered {
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.5px;
+}
+
+/* =====================
+   Backcover Page Styles
+   ===================== */
+
+.backcover-page {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 40px;
+    color: white;
+}
+
+.backcover-header {
+    margin-bottom: 30px;
+}
+
+.backcover-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #3b82f6;
+    letter-spacing: 1px;
+}
+
+.backcover-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.backcover-toc {
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.toc-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 12px;
+}
+
+.toc-item:last-child {
+    border-bottom: none;
+}
+
+.toc-number {
+    width: 30px;
+    height: 24px;
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #3b82f6;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.toc-name {
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.toc-dots {
+    flex: 1;
+    height: 1px;
+    background: repeating-linear-gradient(
+        to right,
+        rgba(255,255,255,0.2) 0px,
+        rgba(255,255,255,0.2) 2px,
+        transparent 2px,
+        transparent 6px
+    );
+    margin: 0 12px;
+    min-width: 20px;
+}
+
+.toc-source {
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.backcover-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.backcover-info-section {
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.backcover-info-section h4 {
+    font-size: 11px;
+    font-weight: 600;
+    color: #3b82f6;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.backcover-info-section p {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.backcover-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.backcover-logo {
+    text-align: left;
+}
+
+.backcover-logo strong {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    color: #3b82f6;
+    letter-spacing: 1px;
+}
+
+.backcover-logo span {
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 2px;
+}
+
+.backcover-credits {
+    text-align: right;
+}
+
+.backcover-credits div {
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+}
+
+.backcover-url {
+    font-family: 'SF Mono', 'Menlo', monospace;
+    color: rgba(255,255,255,0.5);
+    margin-top: 4px;
 }

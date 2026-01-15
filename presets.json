@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-01-14",
+  "lastUpdated": "2026-01-15",
   "presets": [
     {
       "id": "architect",
@@ -8,6 +8,12 @@
       "description": "Kaarten voor architecten - focus op ruimtelijke context, bestemmingsplan en bebouwing",
       "icon": "architect",
       "layers": [
+        {
+          "serverId": "cover",
+          "layer": "voorblad",
+          "title": "Voorblad",
+          "order": 0
+        },
         {
           "serverId": "pdok-luchtfoto",
           "layer": "Actueel_orthoHR",
@@ -51,15 +57,15 @@
           "order": 7
         },
         {
-          "serverId": "pdok-opentopo",
-          "layer": "opentopoachtergrondkaart",
-          "title": "OpenTopo Achtergrond",
-          "order": 8
-        },
-        {
           "serverId": "analysis",
           "layer": "samenvatting",
           "title": "Locatie Analyse",
+          "order": 98
+        },
+        {
+          "serverId": "backcover",
+          "layer": "achterblad",
+          "title": "Achterblad",
           "order": 99
         }
       ],
@@ -75,6 +81,12 @@
       "description": "Kaarten voor projectontwikkelaars - focus op grondwaarde, bestemmingen en statistieken",
       "icon": "developer",
       "layers": [
+        {
+          "serverId": "cover",
+          "layer": "voorblad",
+          "title": "Voorblad",
+          "order": 0
+        },
         {
           "serverId": "pdok-luchtfoto",
           "layer": "Actueel_orthoHR",
@@ -112,33 +124,21 @@
           "order": 6
         },
         {
-          "serverId": "pdok-grenzen",
-          "layer": "Gemeentegebied",
-          "title": "Gemeentegrenzen",
-          "order": 7
-        },
-        {
           "serverId": "pdok-bodem",
           "layer": "soilarea",
           "title": "Bodemkaart",
-          "order": 8
-        },
-        {
-          "serverId": "pdok-bag",
-          "layer": "pand",
-          "title": "BAG Panden",
-          "order": 9
-        },
-        {
-          "serverId": "pdok-bouwjaar",
-          "layer": "bag_pand_bouwjaar",
-          "title": "Bouwjaar Panden",
-          "order": 10
+          "order": 7
         },
         {
           "serverId": "analysis",
           "layer": "samenvatting",
           "title": "Locatie Analyse",
+          "order": 98
+        },
+        {
+          "serverId": "backcover",
+          "layer": "achterblad",
+          "title": "Achterblad",
           "order": 99
         }
       ],
@@ -155,6 +155,12 @@
       "icon": "historian",
       "layers": [
         {
+          "serverId": "cover",
+          "layer": "voorblad",
+          "title": "Voorblad",
+          "order": 0
+        },
+        {
           "serverId": "pdok-luchtfoto",
           "layer": "Actueel_orthoHR",
           "title": "Luchtfoto Actueel",
@@ -167,67 +173,110 @@
           "order": 2
         },
         {
-          "serverId": "hisgis-kadaster1832",
-          "layer": "kadaster1832",
-          "title": "Kadaster 1832",
+          "serverId": "pdok-bag",
+          "layer": "pand",
+          "title": "BAG Panden",
           "order": 3
-        },
-        {
-          "serverId": "hisgis-kadaster1832",
-          "layer": "kadaster1832_detail",
-          "title": "Kadaster 1832 Detail",
-          "order": 4
         },
         {
           "serverId": "pdok-rijksmonumenten",
           "layer": "rijksmonumenten",
           "title": "Rijksmonumenten",
+          "order": 4
+        },
+        {
+          "serverId": "pdok-brt",
+          "layer": "top10nl",
+          "title": "Topografische Kaart",
           "order": 5
-        },
-        {
-          "serverId": "topotijdreis-1900",
-          "layer": "historisch_1900",
-          "title": "Topografie ca. 1900",
-          "order": 6
-        },
-        {
-          "serverId": "topotijdreis-1950",
-          "layer": "historisch_1950",
-          "title": "Topografie ca. 1950",
-          "order": 7
-        },
-        {
-          "serverId": "topotijdreis-1980",
-          "layer": "historisch_1980",
-          "title": "Topografie ca. 1980",
-          "order": 8
-        },
-        {
-          "serverId": "pdok-bag",
-          "layer": "pand",
-          "title": "BAG Panden",
-          "order": 9
-        },
-        {
-          "serverId": "pdok-bouwjaar",
-          "layer": "bag_pand_bouwjaar",
-          "title": "Bouwjaar Panden",
-          "order": 10
-        },
-        {
-          "serverId": "pdok-archeologie",
-          "layer": "archeologische_monumenten",
-          "title": "Archeologische Waarden",
-          "order": 11
         },
         {
           "serverId": "analysis",
           "layer": "samenvatting",
           "title": "Locatie Analyse",
+          "order": 98
+        },
+        {
+          "serverId": "backcover",
+          "layer": "achterblad",
+          "title": "Achterblad",
           "order": 99
         }
       ],
       "analysisLayers": ["buildings", "monuments", "history"],
+      "pageFormat": {
+        "size": "A3",
+        "orientation": "landscape"
+      }
+    },
+    {
+      "id": "constructeur",
+      "name": "Constructeur",
+      "description": "Kaarten voor constructeurs - focus op ondergrond, sonderingen en hoogtedata",
+      "icon": "constructeur",
+      "layers": [
+        {
+          "serverId": "cover",
+          "layer": "voorblad",
+          "title": "Voorblad",
+          "order": 0
+        },
+        {
+          "serverId": "pdok-luchtfoto",
+          "layer": "Actueel_orthoHR",
+          "title": "Luchtfoto Actueel",
+          "order": 1
+        },
+        {
+          "serverId": "pdok-kadaster",
+          "layer": "Perceel",
+          "title": "Kadaster Percelen",
+          "order": 2
+        },
+        {
+          "serverId": "pdok-bag",
+          "layer": "pand",
+          "title": "BAG Panden",
+          "order": 3
+        },
+        {
+          "serverId": "pdok-bgt",
+          "layer": "bgt_pand",
+          "title": "BGT Gebouwen",
+          "order": 4
+        },
+        {
+          "serverId": "pdok-sonderingen",
+          "layer": "cpt_kenset",
+          "title": "Sonderingen (CPT)",
+          "order": 5
+        },
+        {
+          "serverId": "pdok-ahn",
+          "layer": "dsm_05m",
+          "title": "AHN Hoogtekaart (DSM)",
+          "order": 6
+        },
+        {
+          "serverId": "pdok-ahn",
+          "layer": "dtm_05m",
+          "title": "AHN Hoogtekaart (DTM)",
+          "order": 7
+        },
+        {
+          "serverId": "analysis",
+          "layer": "samenvatting",
+          "title": "Locatie Analyse",
+          "order": 98
+        },
+        {
+          "serverId": "backcover",
+          "layer": "achterblad",
+          "title": "Achterblad",
+          "order": 99
+        }
+      ],
+      "analysisLayers": ["buildings", "parcels", "soil"],
       "pageFormat": {
         "size": "A3",
         "orientation": "landscape"

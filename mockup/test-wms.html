@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>WMS Preview Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #1e293b; color: white; }
+        .test { margin: 20px 0; padding: 15px; background: #334155; border-radius: 8px; }
+        .test h3 { margin: 0 0 10px 0; }
+        .test img { max-width: 100%; height: auto; border: 2px solid #3b82f6; }
+        .test .status { padding: 8px; margin-top: 10px; border-radius: 4px; }
+        .test .status.success { background: #059669; }
+        .test .status.error { background: #dc2626; }
+        .test .status.loading { background: #f59e0b; }
+        .url { font-size: 11px; word-break: break-all; background: #0f172a; padding: 8px; border-radius: 4px; margin: 10px 0; }
+        .coords { background: #475569; padding: 10px; border-radius: 4px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🗺️ WMS Preview Test</h1>
+
+    <div class="coords">
+        <strong>Test Locatie:</strong> Grote Kerk, Dordrecht<br>
+        <strong>WGS84:</strong> 51.8133, 4.6601<br>
+        <strong>RD (berekend):</strong> <span id="rd-coords">berekenen...</span>
+    </div>
+
+    <div id="tests"></div>
+
+    <script>
+        // WGS84 to RD conversion
+        function wgs84ToRd(lat, lng) {
+            const phi0 = 52.15517440;
+            const lam0 = 5.38720621;
+            const x0 = 155000;
+            const y0 = 463000;
+
+            const Rp = [
+                [0, 1, 190094.945], [1, 1, -11832.228], [2, 1, -114.221],
+                [0, 3, -32.391], [1, 0, -0.705], [3, 1, -2.340],
+                [1, 3, -0.608], [0, 2, -0.008], [2, 3, 0.148]
+            ];
+
+            const Rq = [
+                [1, 0, 309056.544], [0, 2, 3638.893], [2, 0, 73.077],
+                [1, 2, -157.984], [3, 0, 59.788], [0, 1, 0.433],
+                [2, 2, -6.439], [1, 1, -0.032], [0, 4, 0.092], [1, 4, -0.054]
+            ];
+
+            const dPhi = 0.36 * (lat - phi0);
+            const dLam = 0.36 * (lng - lam0);
+
+            let x = x0, y = y0;
+            for (const [p, q, coef] of Rp) {
+                x += coef * Math.pow(dPhi, p) * Math.pow(dLam, q);
+            }
+            for (const [p, q, coef] of Rq) {
+                y += coef * Math.pow(dPhi, p) * Math.pow(dLam, q);
+            }
+
+            return { x: Math.round(x), y: Math.round(y) };
+        }
+
+        // Test location
+        const lat = 51.8133;
+        const lng = 4.6601;
+        const rd = wgs84ToRd(lat, lng);
+
+        // A3 landscape aspect ratio (1.414:1)
+        const halfWidth = 500;  // meters
+        const halfHeight = halfWidth / 1.414;  // proportional height
+
+        document.getElementById('rd-coords').textContent = `X: ${rd.x}, Y: ${rd.y} | BBox: ${Math.round(halfWidth*2)}m x ${Math.round(halfHeight*2)}m`;
+
+        // WMS servers to test
+        const wmsTests = [
+            {
+                name: 'Luchtfoto (PDOK)',
+                url: 'https://service.pdok.nl/hwh/luchtfotorgb/wms/v1_0',
+                layer: 'Actueel_orthoHR'
+            },
+            {
+                name: 'Kadaster Percelen',
+                url: 'https://service.pdok.nl/kadaster/kadastralekaart/wms/v5_0',
+                layer: 'Perceel'
+            },
+            {
+                name: 'BAG Panden',
+                url: 'https://service.pdok.nl/lv/bag/wms/v2_0',
+                layer: 'pand'
+            },
+            {
+                name: 'BGT Gebouwen',
+                url: 'https://service.pdok.nl/lv/bgt/wms/v1_0',
+                layer: 'pand'
+            },
+            {
+                name: 'AHN Hoogtekaart',
+                url: 'https://service.pdok.nl/rws/ahn/wms/v1_0',
+                layer: 'dsm_05m'
+            },
+            {
+                name: 'Sonderingen (CPT)',
+                url: 'https://service.pdok.nl/bzk/brocptkenset/wms/v1_0',
+                layer: 'cpt_kenset'
+            }
+        ];
+
+        const testsContainer = document.getElementById('tests');
+
+        wmsTests.forEach((test, index) => {
+            const bbox = `${rd.x - halfWidth},${rd.y - halfHeight},${rd.x + halfWidth},${rd.y + halfHeight}`;
+            const params = new URLSearchParams({
+                SERVICE: 'WMS',
+                VERSION: '1.3.0',
+                REQUEST: 'GetMap',
+                LAYERS: test.layer,
+                CRS: 'EPSG:28992',
+                BBOX: bbox,
+                WIDTH: '600',
+                HEIGHT: '424',
+                FORMAT: 'image/png',
+                STYLES: ''
+            });
+
+            const wmsUrl = `${test.url}?${params.toString()}`;
+
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test';
+            testDiv.innerHTML = `
+                <h3>${index + 1}. ${test.name}</h3>
+                <div class="url">${wmsUrl}</div>
+                <img id="img-${index}" src="${wmsUrl}" alt="${test.name}">
+                <div id="status-${index}" class="status loading">⏳ Laden...</div>
+            `;
+            testsContainer.appendChild(testDiv);
+
+            const img = document.getElementById(`img-${index}`);
+            const status = document.getElementById(`status-${index}`);
+
+            img.onload = () => {
+                status.className = 'status success';
+                status.textContent = `✅ Geladen! (${img.naturalWidth}x${img.naturalHeight})`;
+            };
+
+            img.onerror = () => {
+                status.className = 'status error';
+                status.textContent = '❌ Fout bij laden - CORS of server probleem';
+            };
+        });
+    </script>
+</body>
+</html>
