@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-01-15",
+  "lastUpdated": "2026-01-16",
   "presets": [
     {
-      "id": "architect",
-      "name": "Architect",
-      "description": "Kaarten voor architecten - focus op ruimtelijke context, bestemmingsplan en bebouwing",
-      "icon": "architect",
+      "id": "standaard",
+      "name": "Locatie Analyse",
+      "description": "Compleet locatierapport met alle relevante kaartlagen",
+      "icon": "map",
       "layers": [
         {
           "serverId": "cover",
@@ -15,58 +15,64 @@
           "order": 0
         },
         {
+          "serverId": "toc",
+          "layer": "inhoudsopgave",
+          "title": "Inhoudsopgave",
+          "order": 1
+        },
+        {
           "serverId": "pdok-luchtfoto",
           "layer": "Actueel_orthoHR",
           "title": "Luchtfoto Actueel",
-          "order": 1
+          "order": 2
         },
         {
           "serverId": "pdok-kadaster",
           "layer": "Perceel",
           "title": "Kadaster Percelen",
-          "order": 2
+          "order": 3
         },
         {
           "serverId": "pdok-bag",
           "layer": "pand",
           "title": "BAG Panden",
-          "order": 3
+          "order": 4
         },
         {
           "serverId": "pdok-bgt",
           "layer": "bgt_pand",
           "title": "BGT Gebouwen",
-          "order": 4
+          "order": 5
         },
         {
           "serverId": "pdok-plu",
           "layer": "enkelbestemming",
           "title": "Bestemmingsplan",
-          "order": 5
+          "order": 6
         },
         {
           "serverId": "pdok-ahn",
           "layer": "dsm_05m",
           "title": "AHN Hoogtekaart",
-          "order": 6
+          "order": 7
         },
         {
           "serverId": "pdok-brt",
           "layer": "top10nl",
           "title": "Topografische Kaart",
-          "order": 7
+          "order": 8
+        },
+        {
+          "serverId": "pdok-bodem",
+          "layer": "soilarea",
+          "title": "Bodemkaart",
+          "order": 9
         },
         {
           "serverId": "analysis",
           "layer": "samenvatting",
           "title": "Locatie Analyse",
           "order": 98
-        },
-        {
-          "serverId": "backcover",
-          "layer": "achterblad",
-          "title": "Achterblad",
-          "order": 99
         }
       ],
       "analysisLayers": ["buildings", "parcels", "zoning"],
@@ -74,214 +80,7 @@
         "size": "A3",
         "orientation": "landscape"
       }
-    },
-    {
-      "id": "projectontwikkelaar",
-      "name": "Projectontwikkelaar",
-      "description": "Kaarten voor projectontwikkelaars - focus op grondwaarde, bestemmingen en statistieken",
-      "icon": "developer",
-      "layers": [
-        {
-          "serverId": "cover",
-          "layer": "voorblad",
-          "title": "Voorblad",
-          "order": 0
-        },
-        {
-          "serverId": "pdok-luchtfoto",
-          "layer": "Actueel_orthoHR",
-          "title": "Luchtfoto Actueel",
-          "order": 1
-        },
-        {
-          "serverId": "pdok-kadaster",
-          "layer": "Perceel",
-          "title": "Kadaster Percelen",
-          "order": 2
-        },
-        {
-          "serverId": "pdok-plu",
-          "layer": "enkelbestemming",
-          "title": "Bestemmingsplan Enkel",
-          "order": 3
-        },
-        {
-          "serverId": "pdok-plu",
-          "layer": "dubbelbestemming",
-          "title": "Bestemmingsplan Dubbel",
-          "order": 4
-        },
-        {
-          "serverId": "pdok-plu",
-          "layer": "bouwvlak",
-          "title": "Bouwvlakken",
-          "order": 5
-        },
-        {
-          "serverId": "pdok-natura2000",
-          "layer": "natura2000",
-          "title": "Natura 2000 Gebieden",
-          "order": 6
-        },
-        {
-          "serverId": "pdok-bodem",
-          "layer": "soilarea",
-          "title": "Bodemkaart",
-          "order": 7
-        },
-        {
-          "serverId": "analysis",
-          "layer": "samenvatting",
-          "title": "Locatie Analyse",
-          "order": 98
-        },
-        {
-          "serverId": "backcover",
-          "layer": "achterblad",
-          "title": "Achterblad",
-          "order": 99
-        }
-      ],
-      "analysisLayers": ["buildings", "parcels", "woz", "demographics", "zoning"],
-      "pageFormat": {
-        "size": "A3",
-        "orientation": "landscape"
-      }
-    },
-    {
-      "id": "bouwhistoricus",
-      "name": "Bouwhistoricus",
-      "description": "Kaarten voor bouwhistorici - focus op historische kaarten, monumenten en oude kadasters",
-      "icon": "historian",
-      "layers": [
-        {
-          "serverId": "cover",
-          "layer": "voorblad",
-          "title": "Voorblad",
-          "order": 0
-        },
-        {
-          "serverId": "pdok-luchtfoto",
-          "layer": "Actueel_orthoHR",
-          "title": "Luchtfoto Actueel",
-          "order": 1
-        },
-        {
-          "serverId": "pdok-kadaster",
-          "layer": "Perceel",
-          "title": "Kadaster Actueel",
-          "order": 2
-        },
-        {
-          "serverId": "pdok-bag",
-          "layer": "pand",
-          "title": "BAG Panden",
-          "order": 3
-        },
-        {
-          "serverId": "pdok-rijksmonumenten",
-          "layer": "rijksmonumenten",
-          "title": "Rijksmonumenten",
-          "order": 4
-        },
-        {
-          "serverId": "pdok-brt",
-          "layer": "top10nl",
-          "title": "Topografische Kaart",
-          "order": 5
-        },
-        {
-          "serverId": "analysis",
-          "layer": "samenvatting",
-          "title": "Locatie Analyse",
-          "order": 98
-        },
-        {
-          "serverId": "backcover",
-          "layer": "achterblad",
-          "title": "Achterblad",
-          "order": 99
-        }
-      ],
-      "analysisLayers": ["buildings", "monuments", "history"],
-      "pageFormat": {
-        "size": "A3",
-        "orientation": "landscape"
-      }
-    },
-    {
-      "id": "constructeur",
-      "name": "Constructeur",
-      "description": "Kaarten voor constructeurs - focus op ondergrond, sonderingen en hoogtedata",
-      "icon": "constructeur",
-      "layers": [
-        {
-          "serverId": "cover",
-          "layer": "voorblad",
-          "title": "Voorblad",
-          "order": 0
-        },
-        {
-          "serverId": "pdok-luchtfoto",
-          "layer": "Actueel_orthoHR",
-          "title": "Luchtfoto Actueel",
-          "order": 1
-        },
-        {
-          "serverId": "pdok-kadaster",
-          "layer": "Perceel",
-          "title": "Kadaster Percelen",
-          "order": 2
-        },
-        {
-          "serverId": "pdok-bag",
-          "layer": "pand",
-          "title": "BAG Panden",
-          "order": 3
-        },
-        {
-          "serverId": "pdok-bgt",
-          "layer": "bgt_pand",
-          "title": "BGT Gebouwen",
-          "order": 4
-        },
-        {
-          "serverId": "pdok-sonderingen",
-          "layer": "cpt_kenset",
-          "title": "Sonderingen (CPT)",
-          "order": 5
-        },
-        {
-          "serverId": "pdok-ahn",
-          "layer": "dsm_05m",
-          "title": "AHN Hoogtekaart (DSM)",
-          "order": 6
-        },
-        {
-          "serverId": "pdok-ahn",
-          "layer": "dtm_05m",
-          "title": "AHN Hoogtekaart (DTM)",
-          "order": 7
-        },
-        {
-          "serverId": "analysis",
-          "layer": "samenvatting",
-          "title": "Locatie Analyse",
-          "order": 98
-        },
-        {
-          "serverId": "backcover",
-          "layer": "achterblad",
-          "title": "Achterblad",
-          "order": 99
-        }
-      ],
-      "analysisLayers": ["buildings", "parcels", "soil"],
-      "pageFormat": {
-        "size": "A3",
-        "orientation": "landscape"
-      }
     }
   ],
-  "defaultPreset": "architect"
+  "defaultPreset": "standaard"
 }

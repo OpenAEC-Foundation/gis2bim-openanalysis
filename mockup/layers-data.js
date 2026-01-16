@@ -81,6 +81,18 @@ const AVAILABLE_LAYERS = [
         layer: 'opentopoachtergrondkaart',
         color: '#22c55e'
     },
+    {
+        id: 'openstreetmap',
+        name: 'OpenStreetMap',
+        description: 'OpenStreetMap - open source kaart van de wereld',
+        category: 'topografie',
+        source: 'OSM',
+        type: 'TILE',
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        layer: 'osm',
+        color: '#0ea5e9',
+        default: false
+    },
 
     // === KADASTER ===
     {
@@ -106,6 +118,44 @@ const AVAILABLE_LAYERS = [
         layer: 'pand',
         color: '#ef4444',
         default: true
+    },
+    {
+        id: 'bag-panden-compleet',
+        name: 'BAG Panden + Kadaster + Straatnamen',
+        description: 'BAG Panden met kadastrale lijnen (punt-streep) en straatnamen',
+        category: 'kadaster',
+        source: 'PDOK',
+        type: 'WMS',
+        url: 'https://service.pdok.nl/lv/bag/wms/v2_0',
+        layer: 'pand',
+        overlayLayers: ['kadastrale-grenslijn', 'straatnamen'],
+        color: '#ef4444',
+        default: false
+    },
+    {
+        id: 'kadastrale-grenslijn',
+        name: 'Kadastrale Grenslijn (punt-streep)',
+        description: 'Kadastrale perceelgrenzen als punt-streep lijn',
+        category: 'kadaster',
+        source: 'PDOK',
+        type: 'WMS',
+        url: 'https://service.pdok.nl/kadaster/kadastralekaart/wms/v5_0',
+        layer: 'KastersGrenslijn',
+        style: 'kadastralegrenslijn',
+        color: '#b91c1c',
+        default: false
+    },
+    {
+        id: 'straatnamen',
+        name: 'Straatnamen',
+        description: 'Openbare ruimte namen (straten, pleinen)',
+        category: 'kadaster',
+        source: 'PDOK',
+        type: 'WMS',
+        url: 'https://service.pdok.nl/kadaster/kadastralekaart/wms/v5_0',
+        layer: 'OpenbareRuimteNaam',
+        color: '#7f1d1d',
+        default: false
     },
     {
         id: 'bag-verblijfsobjecten',

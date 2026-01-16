@@ -21,8 +21,13 @@
             </div>
             <nav class="nav">
                 <a href="#" class="nav-link active">Rapport Generator</a>
-                <a href="#" class="nav-link">Documentatie</a>
-                <a href="#" class="nav-link">Over</a>
+                <a href="#" class="nav-link" onclick="openDocumentationModal(); return false;">Documentatie</a>
+                <a href="https://github.com/openaec" target="_blank" class="nav-link" title="OpenAEC Foundation op GitHub">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                    GitHub
+                </a>
             </nav>
             <div class="header-actions">
                 <button class="btn-icon" onclick="openSettingsModal()" title="Instellingen">
@@ -81,12 +86,12 @@
 
             <!-- Preset Selector -->
             <div class="panel-section preset-section">
-                <h2 class="section-title">Boekje Preset</h2>
+                <h2 class="section-title">Rapport Type</h2>
                 <div id="preset-selector" class="preset-selector">
                     <!-- Will be populated by JavaScript -->
-                    <select disabled>
-                        <option>Laden...</option>
-                    </select>
+                    <div class="preset-active">
+                        <span class="preset-active-name">Laden...</span>
+                    </div>
                 </div>
             </div>
 
@@ -107,23 +112,6 @@
                     <!-- Layers will be inserted here -->
                 </div>
             </div>
-
-            <!-- Saved Reports -->
-            <div class="panel-section">
-                <div class="section-header">
-                    <h2 class="section-title">Opgeslagen Rapporten</h2>
-                    <button class="btn-small" onclick="saveCurrentReport()">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                            <path d="M13 11v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2M8 3v8M5 6l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                        Opslaan
-                    </button>
-                </div>
-                <div class="saved-reports" id="saved-reports">
-                    <div class="empty-state small">Geen opgeslagen rapporten</div>
-                </div>
-            </div>
-
 
             <!-- Footer with Download Buttons -->
             <div class="panel-footer">
@@ -250,7 +238,7 @@
 
     <!-- Settings Modal -->
     <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
+        <div class="modal modal-large">
             <div class="modal-header">
                 <h2>Instellingen</h2>
                 <button class="modal-close" onclick="closeSettingsModal()">
@@ -260,21 +248,43 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="settings-group">
-                    <h3>Standaard kaartlagen</h3>
-                    <p class="settings-desc">Selecteer welke kaartlagen standaard worden toegevoegd aan nieuwe rapporten.</p>
-                    <div class="default-layers-list" id="default-layers-list"></div>
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-tab="layers" onclick="switchSettingsTab('layers')">Kaartlagen</button>
+                    <button class="settings-tab" data-tab="servers" onclick="switchSettingsTab('servers')">Servers</button>
+                    <button class="settings-tab" data-tab="display" onclick="switchSettingsTab('display')">Weergave</button>
                 </div>
-                <div class="settings-group">
-                    <h3>Weergave</h3>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="setting-auto-generate" checked>
-                        <span>Automatisch preview genereren bij locatiekeuze</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="setting-show-thumbnails" checked>
-                        <span>Toon pagina thumbnails</span>
-                    </label>
+
+                <!-- Kaartlagen Tab -->
+                <div class="settings-tab-content active" id="settings-tab-layers">
+                    <div class="settings-group">
+                        <h3>Standaard kaartlagen</h3>
+                        <p class="settings-desc">Selecteer welke kaartlagen standaard worden toegevoegd aan nieuwe rapporten. Klik op een laag om de server te bekijken of aan te passen.</p>
+                        <div class="default-layers-list" id="default-layers-list"></div>
+                    </div>
+                </div>
+
+                <!-- Servers Tab -->
+                <div class="settings-tab-content" id="settings-tab-servers">
+                    <div class="settings-group">
+                        <h3>Server Configuratie</h3>
+                        <p class="settings-desc">Beheer WMS/WMTS server URLs. Klik op een server om de URL aan te passen.</p>
+                        <div class="server-config-list" id="server-config-list"></div>
+                    </div>
+                </div>
+
+                <!-- Weergave Tab -->
+                <div class="settings-tab-content" id="settings-tab-display">
+                    <div class="settings-group">
+                        <h3>Weergave</h3>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="setting-auto-generate" checked>
+                            <span>Automatisch preview genereren bij locatiekeuze</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="setting-show-thumbnails" checked>
+                            <span>Toon pagina thumbnails</span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -406,6 +416,68 @@
                     <button class="btn-secondary" onclick="addNewServer()">+ Nieuwe Server</button>
                 </div>
                 <button class="btn-primary" onclick="closeServerModal()">Sluiten</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentation Modal -->
+    <div class="modal-overlay" id="documentation-modal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2>Documentatie</h2>
+                <button class="modal-close" onclick="closeDocumentationModal()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M5 5l10 10M5 15L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body documentation-content">
+                <h3>GIS2BIM OpenAnalysis</h3>
+                <p>OpenAnalysis is een open-source tool voor het genereren van professionele locatierapporten met Nederlandse geodata. De applicatie combineert kaartlagen van PDOK, Kadaster, BAG, BGT en andere bronnen tot overzichtelijke PDF-rapporten.</p>
+
+                <h4>Hoe te gebruiken</h4>
+                <ol>
+                    <li><strong>Zoek een locatie</strong> - Voer een adres in of klik op de kaart</li>
+                    <li><strong>Kies een preset</strong> - Selecteer een voorgedefinieerd boekje (Architect, Projectontwikkelaar, Bouwhistoricus, Constructeur)</li>
+                    <li><strong>Pas kaartlagen aan</strong> - Voeg extra lagen toe of verwijder lagen</li>
+                    <li><strong>Download PDF</strong> - Genereer het rapport als PDF</li>
+                </ol>
+
+                <h4>Beschikbare kaartlagen</h4>
+                <ul>
+                    <li><strong>Topografie</strong> - TOP10NL, OpenTopo, BRT Achtergrondkaart, OpenStreetMap</li>
+                    <li><strong>Kadaster</strong> - Percelen, BAG Panden, Kadastrale grenzen, Straatnamen</li>
+                    <li><strong>Luchtfoto's</strong> - Actueel en historisch (2016-heden)</li>
+                    <li><strong>Hoogte</strong> - AHN4 Hoogtekaart (DSM/DTM)</li>
+                    <li><strong>Milieu</strong> - Bodemkaart, Natura 2000, Geluidskaarten</li>
+                    <li><strong>Ruimtelijke plannen</strong> - Bestemmingsplannen</li>
+                    <li><strong>Erfgoed</strong> - Rijksmonumenten, Archeologische monumenten</li>
+                </ul>
+
+                <h4>Presets</h4>
+                <p>Er zijn vier voorgedefinieerde presets beschikbaar:</p>
+                <ul>
+                    <li><strong>Architect</strong> - Focus op ruimtelijke context, bestemmingsplan en bebouwing</li>
+                    <li><strong>Projectontwikkelaar</strong> - Focus op grondwaarde, bestemmingen en statistieken</li>
+                    <li><strong>Bouwhistoricus</strong> - Focus op historische kaarten en monumenten</li>
+                    <li><strong>Constructeur</strong> - Focus op ondergrond, sonderingen en hoogtedata</li>
+                </ul>
+
+                <h4>Databronnen</h4>
+                <p>Alle kaartdata komt van publieke Nederlandse geodata-bronnen:</p>
+                <ul>
+                    <li><strong>PDOK</strong> - Publieke Dienstverlening Op de Kaart</li>
+                    <li><strong>Kadaster</strong> - Basisregistratie Kadaster</li>
+                    <li><strong>BAG</strong> - Basisregistratie Adressen en Gebouwen</li>
+                    <li><strong>CBS</strong> - Centraal Bureau voor de Statistiek</li>
+                    <li><strong>RCE</strong> - Rijksdienst voor het Cultureel Erfgoed</li>
+                </ul>
+
+                <h4>Open Source</h4>
+                <p>Deze tool is ontwikkeld door de <a href="https://github.com/openaec" target="_blank">OpenAEC Foundation</a> en is beschikbaar onder de MIT licentie. Bijdragen zijn welkom op <a href="https://github.com/openaec/GIS2BIM-OpenAnalysis" target="_blank">GitHub</a>.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="closeDocumentationModal()">Sluiten</button>
             </div>
         </div>
     </div>

@@ -149,6 +149,18 @@
       "description": "Bestemmingsplannen en ruimtelijke plannen"
     },
     {
+      "id": "pdok-sonderingen",
+      "name": "PDOK BRO Sonderingen (CPT)",
+      "url": "https://service.pdok.nl/bzk/brocptkenset/wms/v1_0",
+      "type": "WMS",
+      "version": "1.3.0",
+      "layers": ["cpt_kenset", "sondering"],
+      "crs": ["EPSG:28992", "EPSG:4326"],
+      "status": "active",
+      "category": "ondergrond",
+      "description": "Geotechnisch sondeeronderzoek (CPT) uit de BRO"
+    },
+    {
       "id": "pdok-bodem",
       "name": "PDOK Bodemkaart",
       "url": "https://service.pdok.nl/bzk/bro-bodemkaart/wms/v1_0",

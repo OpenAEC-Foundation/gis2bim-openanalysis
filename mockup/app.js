@@ -526,10 +526,23 @@ function openSettingsModal() {
 
     // Populate default layers checklist
     renderDefaultLayersSettings();
+    renderServerConfigList();
 }
 
 function closeSettingsModal() {
     document.getElementById('settings-modal').classList.remove('active');
+}
+
+function switchSettingsTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+
+    // Update tab content
+    document.querySelectorAll('.settings-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `settings-tab-${tabName}`);
+    });
 }
 
 function renderDefaultLayersSettings() {
@@ -542,14 +555,107 @@ function renderDefaultLayersSettings() {
         const isDefault = settings.defaultLayers.includes(layer.id) ||
             (settings.defaultLayers.length === 0 && layer.default);
 
+        // Get custom URL if set
+        const customUrl = settings.customServerUrls?.[layer.id] || layer.url;
+        const serverUrl = customUrl || 'Intern gegenereerd';
+
         const item = document.createElement('div');
         item.className = 'settings-layer-item';
         item.innerHTML = `
-            <input type="checkbox" id="default-${layer.id}" value="${layer.id}" ${isDefault ? 'checked' : ''}>
-            <label for="default-${layer.id}">${layer.name}</label>
+            <input type="checkbox" id="default-${layer.id}" value="${layer.id}" ${isDefault ? 'checked' : ''} onclick="event.stopPropagation()">
+            <div class="layer-item-content">
+                <div class="layer-item-name">${layer.name}</div>
+                <div class="layer-item-server">
+                    <span class="layer-item-server-url" title="${serverUrl}">${serverUrl}</span>
+                </div>
+            </div>
+            ${layer.url ? `<button class="layer-item-edit" onclick="event.stopPropagation(); editLayerServer('${layer.id}')" title="Server URL aanpassen">Bewerk</button>` : ''}
         `;
         container.appendChild(item);
     });
+}
+
+function renderServerConfigList() {
+    const container = document.getElementById('server-config-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Get unique servers from AVAILABLE_LAYERS
+    const servers = new Map();
+    AVAILABLE_LAYERS.forEach(layer => {
+        if (layer.url && !servers.has(layer.url)) {
+            servers.set(layer.url, {
+                url: layer.url,
+                type: layer.type,
+                layers: [layer]
+            });
+        } else if (layer.url) {
+            servers.get(layer.url).layers.push(layer);
+        }
+    });
+
+    servers.forEach((server, url) => {
+        const customUrl = settings.customServerUrls?.[server.layers[0].id] || url;
+        const layerNames = server.layers.map(l => l.name).join(', ');
+
+        const item = document.createElement('div');
+        item.className = 'server-config-item';
+        item.innerHTML = `
+            <div class="server-config-header">
+                <span class="server-config-name">${server.layers[0].source || 'Onbekend'}</span>
+                <span class="server-config-type">${server.type}</span>
+            </div>
+            <div class="server-config-url-container">
+                <input type="text" class="server-config-url" value="${customUrl}" data-original="${url}" data-layer-ids="${server.layers.map(l => l.id).join(',')}" onchange="updateServerUrl(this)">
+            </div>
+            <div class="server-config-layers">Lagen: ${layerNames}</div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function editLayerServer(layerId) {
+    const layer = AVAILABLE_LAYERS.find(l => l.id === layerId);
+    if (!layer) return;
+
+    const currentUrl = settings.customServerUrls?.[layerId] || layer.url;
+    const newUrl = prompt(`Server URL voor "${layer.name}":`, currentUrl);
+
+    if (newUrl !== null && newUrl !== currentUrl) {
+        if (!settings.customServerUrls) {
+            settings.customServerUrls = {};
+        }
+        settings.customServerUrls[layerId] = newUrl;
+
+        // Update the layer object for this session
+        layer.url = newUrl;
+
+        renderDefaultLayersSettings();
+        showNotification(`Server URL bijgewerkt voor ${layer.name}`);
+    }
+}
+
+function updateServerUrl(input) {
+    const layerIds = input.dataset.layerIds.split(',');
+    const newUrl = input.value;
+
+    if (!settings.customServerUrls) {
+        settings.customServerUrls = {};
+    }
+
+    layerIds.forEach(layerId => {
+        settings.customServerUrls[layerId] = newUrl;
+
+        // Update the layer object for this session
+        const layer = AVAILABLE_LAYERS.find(l => l.id === layerId);
+        if (layer) {
+            layer.url = newUrl;
+        }
+    });
+
+    renderDefaultLayersSettings();
+    showNotification('Server URL bijgewerkt');
 }
 
 function saveSettings() {
@@ -560,6 +666,8 @@ function saveSettings() {
     });
 
     settings.defaultLayers = defaultLayers;
+
+    // customServerUrls is already updated in editLayerServer/updateServerUrl
 
     // Save to localStorage
     localStorage.setItem('gis2bim-settings', JSON.stringify(settings));
@@ -1108,9 +1216,19 @@ function renderPage(index) {
 
     // Check if this is a cover page
     if (drawing.serverId === 'cover' || drawing.layerId === 'voorblad') {
-        const presetName = currentPreset ?
-            FALLBACK_PRESETS.presets.find(p => p.id === currentPreset)?.name || 'Locatie Rapport' :
-            'Locatie Rapport';
+        const presetInfo = currentPreset ?
+            FALLBACK_PRESETS.presets.find(p => p.id === currentPreset) : null;
+        const presetName = presetInfo?.name || 'Locatie Analyse';
+        const presetDesc = presetInfo?.description || 'Professioneel locatierapport met Nederlandse geodata';
+
+        // Get number of map pages (exclude cover and backcover)
+        const mapPages = activeDrawings.filter(d =>
+            d.serverId !== 'cover' &&
+            d.serverId !== 'backcover' &&
+            d.layerId !== 'voorblad' &&
+            d.layerId !== 'achterblad' &&
+            d.layerId !== 'samenvatting'
+        ).length;
 
         page.innerHTML = `
             <div class="cover-page">
@@ -1119,96 +1237,150 @@ function renderPage(index) {
                         <strong>GIS2BIM</strong>
                         <span>OpenAnalysis</span>
                     </div>
+                    <div class="cover-preset-badge">${presetName}</div>
                 </div>
                 <div class="cover-content">
-                    <h1 class="cover-title">Locatie Rapport</h1>
-                    <h2 class="cover-subtitle">${presetName}</h2>
-                    <div class="cover-location">
-                        <div class="cover-address">${address}</div>
-                        <div class="cover-municipality">${municipality}</div>
+                    <div class="cover-main-title">
+                        <h1 class="cover-title">Locatie Rapport</h1>
+                        <p class="cover-description">${presetDesc}</p>
                     </div>
-                    <div class="cover-details">
-                        <div class="cover-detail-row">
-                            <span class="cover-label">WGS84</span>
-                            <span class="cover-value">${coordsWgs84}</span>
+                    <div class="cover-location-card">
+                        <div class="cover-location-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                            </svg>
                         </div>
-                        <div class="cover-detail-row">
-                            <span class="cover-label">RD (EPSG:28992)</span>
-                            <span class="cover-value">${coordsRd}</span>
+                        <div class="cover-location-text">
+                            <div class="cover-address">${address}</div>
+                            <div class="cover-municipality">${municipality}</div>
                         </div>
-                        <div class="cover-detail-row">
-                            <span class="cover-label">Bounding Box</span>
-                            <span class="cover-value">${settings.radius * 2}m x ${Math.round(settings.radius * 2 / 1.414)}m</span>
+                    </div>
+                    <div class="cover-details-grid">
+                        <div class="cover-detail-card">
+                            <div class="cover-detail-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                                </svg>
+                            </div>
+                            <span class="cover-detail-label">WGS84</span>
+                            <span class="cover-detail-value">${coordsWgs84}</span>
                         </div>
-                        <div class="cover-detail-row">
-                            <span class="cover-label">Aantal kaarten</span>
-                            <span class="cover-value">${activeDrawings.length - 1}</span>
+                        <div class="cover-detail-card">
+                            <div class="cover-detail-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+                                    <line x1="8" y1="2" x2="8" y2="18"/>
+                                    <line x1="16" y1="6" x2="16" y2="22"/>
+                                </svg>
+                            </div>
+                            <span class="cover-detail-label">RD (EPSG:28992)</span>
+                            <span class="cover-detail-value">${coordsRd}</span>
+                        </div>
+                        <div class="cover-detail-card">
+                            <div class="cover-detail-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="3" y1="9" x2="21" y2="9"/>
+                                    <line x1="9" y1="21" x2="9" y2="9"/>
+                                </svg>
+                            </div>
+                            <span class="cover-detail-label">Bounding Box</span>
+                            <span class="cover-detail-value">${settings.radius * 2}m × ${Math.round(settings.radius * 2 / 1.414)}m</span>
+                        </div>
+                        <div class="cover-detail-card">
+                            <div class="cover-detail-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                            </div>
+                            <span class="cover-detail-label">Kaarten</span>
+                            <span class="cover-detail-value">${mapPages} pagina's</span>
                         </div>
                     </div>
                 </div>
                 <div class="cover-footer">
-                    <div class="cover-date">${new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                    <div class="cover-powered">Powered by OpenAEC Foundation</div>
+                    <div class="cover-footer-left">
+                        <div class="cover-date">${new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                    </div>
+                    <div class="cover-footer-right">
+                        <div class="cover-powered">
+                            <span>Powered by</span>
+                            <a href="https://github.com/openaec" target="_blank">OpenAEC Foundation</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
         return;
     }
 
-    // Check if this is a backcover page
-    if (drawing.serverId === 'backcover' || drawing.layerId === 'achterblad') {
+    // Check if this is a table of contents page (2nd page)
+    if (drawing.serverId === 'toc' || drawing.layerId === 'inhoudsopgave' || drawing.serverId === 'backcover' || drawing.layerId === 'achterblad') {
         const presetName = currentPreset ?
             FALLBACK_PRESETS.presets.find(p => p.id === currentPreset)?.name || 'Locatie Rapport' :
             'Locatie Rapport';
 
-        // Get list of layers for table of contents (exclude cover and backcover)
+        // Get list of layers for table of contents (exclude cover, toc, and analysis)
         const contentLayers = activeDrawings.filter(d =>
             d.serverId !== 'cover' &&
+            d.serverId !== 'toc' &&
             d.serverId !== 'backcover' &&
             d.layerId !== 'voorblad' &&
+            d.layerId !== 'inhoudsopgave' &&
             d.layerId !== 'achterblad'
         );
 
         page.innerHTML = `
-            <div class="backcover-page">
-                <div class="backcover-header">
-                    <div class="backcover-title">Inhoudsopgave</div>
+            <div class="toc-page">
+                <div class="toc-header">
+                    <div class="toc-logo">
+                        <strong>GIS2BIM</strong>
+                        <span>OpenAnalysis</span>
+                    </div>
+                    <div class="toc-title">Inhoudsopgave</div>
                 </div>
-                <div class="backcover-content">
-                    <div class="backcover-toc">
+                <div class="toc-content">
+                    <div class="toc-list">
+                        <div class="toc-item toc-item-header">
+                            <span class="toc-number">Pag.</span>
+                            <span class="toc-name">Kaartlaag</span>
+                            <span class="toc-source">Bron</span>
+                        </div>
                         ${contentLayers.map((layer, i) => `
                             <div class="toc-item">
-                                <span class="toc-number">${i + 2}</span>
+                                <span class="toc-number">${i + 3}</span>
                                 <span class="toc-name">${layer.name}</span>
                                 <span class="toc-dots"></span>
-                                <span class="toc-source">${layer.source || layer.serverId}</span>
+                                <span class="toc-source">${layer.source || 'PDOK'}</span>
                             </div>
                         `).join('')}
                     </div>
-                    <div class="backcover-info">
-                        <div class="backcover-info-section">
+                    <div class="toc-info">
+                        <div class="toc-info-section">
                             <h4>Databronnen</h4>
                             <p>PDOK - Publieke Dienstverlening Op de Kaart<br>
                             Kadaster, RWS, Ministerie van BZK</p>
                         </div>
-                        <div class="backcover-info-section">
+                        <div class="toc-info-section">
                             <h4>Coördinatenstelsel</h4>
                             <p>RD New (EPSG:28992) - Rijksdriehoekscoördinaten</p>
                         </div>
-                        <div class="backcover-info-section">
+                        <div class="toc-info-section">
                             <h4>Disclaimer</h4>
-                            <p>Dit rapport is automatisch gegenereerd. Controleer de gegevens bij de officiële bronnen voor juridische doeleinden.</p>
+                            <p>Dit rapport is automatisch gegenereerd. Controleer bij officiële bronnen voor juridische doeleinden.</p>
                         </div>
                     </div>
                 </div>
-                <div class="backcover-footer">
-                    <div class="backcover-logo">
-                        <strong>GIS2BIM</strong>
-                        <span>OpenAnalysis</span>
+                <div class="toc-footer">
+                    <div class="toc-footer-left">
+                        <span>Pagina 2 van ${activeDrawings.length}</span>
                     </div>
-                    <div class="backcover-credits">
-                        <div>Powered by OpenAEC Foundation</div>
-                        <div class="backcover-url">github.com/openaec/gis2bim</div>
+                    <div class="toc-footer-right">
+                        <a href="https://github.com/openaec" target="_blank">OpenAEC Foundation</a>
                     </div>
                 </div>
             </div>
@@ -1940,6 +2112,15 @@ function closeServerModal() {
     document.getElementById('server-modal').classList.remove('active');
 }
 
+// Documentation Modal
+function openDocumentationModal() {
+    document.getElementById('documentation-modal').classList.add('active');
+}
+
+function closeDocumentationModal() {
+    document.getElementById('documentation-modal').classList.remove('active');
+}
+
 // Show server list view
 function showServerList() {
     document.getElementById('server-list-view').style.display = 'block';
@@ -2313,76 +2494,26 @@ let currentPreset = null;
 const FALLBACK_PRESETS = {
     presets: [
         {
-            id: 'architect',
-            name: 'Architect',
-            description: 'Kaarten voor architecten - focus op ruimtelijke context, bestemmingsplan en bebouwing',
-            icon: 'architect',
+            id: 'standaard',
+            name: 'Locatie Analyse',
+            description: 'Compleet locatierapport met alle relevante kaartlagen',
+            icon: 'map',
             layers: [
                 { serverId: 'cover', layer: 'voorblad', title: 'Voorblad', order: 0 },
-                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 1 },
-                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Percelen', order: 2 },
-                { serverId: 'pdok-bag', layer: 'pand', title: 'BAG Panden', order: 3 },
-                { serverId: 'pdok-plu', layer: 'enkelbestemming', title: 'Bestemmingsplan', order: 4 },
-                { serverId: 'pdok-ahn', layer: 'dsm_05m', title: 'AHN Hoogtekaart', order: 5 },
-                { serverId: 'pdok-brt', layer: 'top10nl', title: 'Topografische Kaart', order: 6 },
-                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 },
-                { serverId: 'backcover', layer: 'achterblad', title: 'Achterblad', order: 99 }
-            ]
-        },
-        {
-            id: 'projectontwikkelaar',
-            name: 'Projectontwikkelaar',
-            description: 'Kaarten voor projectontwikkelaars - focus op grondwaarde, bestemmingen en statistieken',
-            icon: 'developer',
-            layers: [
-                { serverId: 'cover', layer: 'voorblad', title: 'Voorblad', order: 0 },
-                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 1 },
-                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Percelen', order: 2 },
-                { serverId: 'pdok-plu', layer: 'enkelbestemming', title: 'Bestemmingsplan Enkel', order: 3 },
-                { serverId: 'pdok-plu', layer: 'dubbelbestemming', title: 'Bestemmingsplan Dubbel', order: 4 },
-                { serverId: 'pdok-plu', layer: 'bouwvlak', title: 'Bouwvlakken', order: 5 },
-                { serverId: 'pdok-natura2000', layer: 'natura2000', title: 'Natura 2000 Gebieden', order: 6 },
-                { serverId: 'pdok-bodem', layer: 'soilarea', title: 'Bodemkaart', order: 7 },
-                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 },
-                { serverId: 'backcover', layer: 'achterblad', title: 'Achterblad', order: 99 }
-            ]
-        },
-        {
-            id: 'bouwhistoricus',
-            name: 'Bouwhistoricus',
-            description: 'Kaarten voor bouwhistorici - focus op historische kaarten, monumenten en oude kadasters',
-            icon: 'historian',
-            layers: [
-                { serverId: 'cover', layer: 'voorblad', title: 'Voorblad', order: 0 },
-                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 1 },
-                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Actueel', order: 2 },
-                { serverId: 'pdok-bag', layer: 'pand', title: 'BAG Panden', order: 3 },
-                { serverId: 'pdok-rijksmonumenten', layer: 'rijksmonumenten', title: 'Rijksmonumenten', order: 4 },
-                { serverId: 'pdok-brt', layer: 'top10nl', title: 'Topografische Kaart', order: 5 },
-                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 },
-                { serverId: 'backcover', layer: 'achterblad', title: 'Achterblad', order: 99 }
-            ]
-        },
-        {
-            id: 'constructeur',
-            name: 'Constructeur',
-            description: 'Kaarten voor constructeurs - focus op ondergrond, sonderingen en hoogtedata',
-            icon: 'constructeur',
-            layers: [
-                { serverId: 'cover', layer: 'voorblad', title: 'Voorblad', order: 0 },
-                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 1 },
-                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Percelen', order: 2 },
-                { serverId: 'pdok-bag', layer: 'pand', title: 'BAG Panden', order: 3 },
-                { serverId: 'pdok-bgt', layer: 'bgt_pand', title: 'BGT Gebouwen', order: 4 },
-                { serverId: 'pdok-sonderingen', layer: 'cpt_kenset', title: 'Sonderingen (CPT)', order: 5 },
-                { serverId: 'pdok-ahn', layer: 'dsm_05m', title: 'AHN Hoogtekaart (DSM)', order: 6 },
-                { serverId: 'pdok-ahn', layer: 'dtm_05m', title: 'AHN Hoogtekaart (DTM)', order: 7 },
-                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 },
-                { serverId: 'backcover', layer: 'achterblad', title: 'Achterblad', order: 99 }
+                { serverId: 'toc', layer: 'inhoudsopgave', title: 'Inhoudsopgave', order: 1 },
+                { serverId: 'pdok-luchtfoto', layer: 'Actueel_orthoHR', title: 'Luchtfoto Actueel', order: 2 },
+                { serverId: 'pdok-kadaster', layer: 'Perceel', title: 'Kadaster Percelen', order: 3 },
+                { serverId: 'pdok-bag', layer: 'pand', title: 'BAG Panden', order: 4 },
+                { serverId: 'pdok-bgt', layer: 'bgt_pand', title: 'BGT Gebouwen', order: 5 },
+                { serverId: 'pdok-plu', layer: 'enkelbestemming', title: 'Bestemmingsplan', order: 6 },
+                { serverId: 'pdok-ahn', layer: 'dsm_05m', title: 'AHN Hoogtekaart', order: 7 },
+                { serverId: 'pdok-brt', layer: 'top10nl', title: 'Topografische Kaart', order: 8 },
+                { serverId: 'pdok-bodem', layer: 'soilarea', title: 'Bodemkaart', order: 9 },
+                { serverId: 'analysis', layer: 'samenvatting', title: 'Locatie Analyse', order: 98 }
             ]
         }
     ],
-    defaultPreset: 'architect'
+    defaultPreset: 'standaard'
 };
 
 // Load presets from API or use fallback
@@ -2405,7 +2536,7 @@ async function loadPresets() {
     renderPresetSelector();
 
     // Apply default preset
-    const defaultPresetId = presetsData.defaultPreset || 'architect';
+    const defaultPresetId = presetsData.defaultPreset || 'standaard';
     const defaultPreset = presetsData.presets?.find(p => p.id === defaultPresetId);
     if (defaultPreset) {
         applyPreset(defaultPresetId, false);
@@ -2417,22 +2548,15 @@ function renderPresetSelector() {
     const container = document.getElementById('preset-selector');
     if (!container || !presetsData?.presets) return;
 
-    container.innerHTML = `
-        <select id="preset-dropdown" onchange="onPresetChange(this.value)">
-            <option value="">-- Selecteer een boekje preset --</option>
-            ${presetsData.presets.map(preset => `
-                <option value="${preset.id}" ${currentPreset === preset.id ? 'selected' : ''}>
-                    ${getPresetIcon(preset.icon)} ${preset.name}
-                </option>
-            `).join('')}
-        </select>
-        <button class="btn-icon" onclick="openPresetModal()" title="Presets beheren">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="8" cy="8" r="3"/>
-                <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/>
-            </svg>
-        </button>
-    `;
+    const preset = presetsData.presets[0];
+    if (preset) {
+        container.innerHTML = `
+            <div class="preset-active">
+                <span class="preset-active-name">${preset.name}</span>
+                <span class="preset-active-count">${preset.layers?.length || 0} kaartlagen</span>
+            </div>
+        `;
+    }
 }
 
 // Get icon for preset type
@@ -2534,6 +2658,7 @@ async function applyPreset(presetId, showNotificationMsg = true) {
 function getColorForServer(serverId) {
     const colorMap = {
         'cover': '#1e3a5f',
+        'toc': '#f1f5f9',
         'backcover': '#1e3a5f',
         'analysis': '#334155',
         'pdok-luchtfoto': '#3b82f6',
